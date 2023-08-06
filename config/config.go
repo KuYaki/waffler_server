@@ -8,9 +8,18 @@ import (
 )
 
 type AppConf struct {
-	AppName string `yaml:"app_name"`
-	Server  Server `yaml:"server"`
-	Logger  Logger `yaml:"logger"`
+	AppName     string `yaml:"app_name"`
+	Server      Server `yaml:"server"`
+	Logger      Logger `yaml:"logger"`
+	DatabaseURL string `yaml:"database_url"`
+	Token       Token  `yaml:"token"`
+}
+
+type Token struct {
+	AccessTTL     time.Duration `yaml:"access_ttl"`
+	RefreshTTL    time.Duration `yaml:"refresh_ttl"`
+	AccessSecret  string        `yaml:"access_secret"`
+	RefreshSecret string        `yaml:"refresh_secret"`
 }
 
 type Logger struct {
@@ -31,6 +40,7 @@ func NewAppConf() AppConf {
 		Server: Server{
 			Port: os.Getenv("SERVER_PORT"),
 		},
+		DatabaseURL: os.Getenv("DATABASE_URL"),
 	}
 }
 

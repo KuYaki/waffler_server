@@ -4,10 +4,17 @@ import (
 	"context"
 	"fmt"
 	"github.com/KuYaki/waffler_server/config"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/db"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/server"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/KuYaki/waffler_server/internal/router"
+	"github.com/KuYaki/waffler_server/internal/storages"
 	"github.com/go-chi/chi/v5"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"net/http"
@@ -83,7 +90,32 @@ func (a *App) Run() int {
 
 // Bootstrap - init application
 func (a *App) Bootstrap() Runner {
-	controller := modules.NewControllers(a.logger)
+	conn, err := db.NewSqlDB(a.conf)
+	if err != nil {
+		a.logger.Fatal("app: db error", zap.Error(err))
+		return nil
+	}
+	storagesDB := storages.NewStorages(conn)
+
+	// инициализация менеджера токенов
+	tokenManager := cryptography.NewTokenJWT(a.conf.Token)
+	// инициализация декодера
+	decoder := godecoder.NewDecoder(jsoniter.Config{
+		EscapeHTML:             true,
+		SortMapKeys:            true,
+		ValidateJsonRawMessage: true,
+		DisallowUnknownFields:  true,
+	})
+	// инициализация менеджера ответов сервера
+	responseManager := responder.NewResponder(decoder, a.logger)
+	// инициализация генератора uuid
+	uuID := cryptography.NewUUIDGenerator()
+	// инициализация хешера
+	hash := cryptography.NewHash(uuID)
+
+	components := component.NewComponents(a.conf, tokenManager, responseManager, decoder, hash, a.logger)
+	services := modules.NewServices(storagesDB, components)
+	controller := modules.NewControllers(services, components)
 	// init router
 	var r *chi.Mux
 	r = router.NewApiRouter(controller)
