@@ -23,7 +23,7 @@ type TokenJWT struct {
 	RefreshSecret []byte
 }
 
-func NewTokenJWT(token config.Token) TokenManager {
+func NewTokenJWT(token *config.Token) TokenManager {
 	return &TokenJWT{AccessSecret: []byte(token.AccessSecret), RefreshSecret: []byte(token.RefreshSecret)}
 }
 

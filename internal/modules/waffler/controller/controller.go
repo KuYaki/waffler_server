@@ -3,16 +3,21 @@ package controller
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
+	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
 	"net/http"
+	"net/url"
 )
 
 type Waffler interface {
 	Hello(http.ResponseWriter, *http.Request)
 	HomePage(http.ResponseWriter, *http.Request)
 	Search(http.ResponseWriter, *http.Request)
+	Score(http.ResponseWriter, *http.Request)
+	Info(http.ResponseWriter, *http.Request)
+	Parse(http.ResponseWriter, *http.Request)
 }
 
 type Waffl struct {
@@ -33,19 +38,40 @@ func (wa *Waffl) HomePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wa *Waffl) Search(w http.ResponseWriter, r *http.Request) {
-	//var data models.Search
-	//var err error
-	//
-	//wa.Decoder.Decode(r.Body, &data)
-	//if err != nil {
-	//	wa.ErrorBadRequest(w, err)
-	//	return
-	//}
+	data := &models.Search{}
+	err := wa.Decoder.Decode(r.Body, data)
+	if err != nil {
+		wa.Responder.ErrorBadRequest(w, err)
+		return
+	}
 
-	//TODO implement me
-	panic("implement me")
+	_, err = url.ParseRequestURI(data.Query)
+	if err != nil {
+		wa.Responder.ErrorBadRequest(w, err)
+		return
+	}
+
+	wa.log.Info("search", zap.String("search", data.Query))
+
 }
 
+func (wa *Waffl) Score(w http.ResponseWriter, r *http.Request) {
+	data := &models.Score{}
+	err := wa.Decoder.Decode(r.Body, data)
+	if err != nil {
+		wa.Responder.ErrorBadRequest(w, err)
+		return
+	}
+
+}
+func (wa *Waffl) Info(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
+
+	//wa.service.Search(data)
+}
 func (wa *Waffl) Hello(writer http.ResponseWriter, request *http.Request) {
 	_, err := writer.Write([]byte("Hello, world!"))
 	if err != nil {

@@ -3,6 +3,7 @@ package component
 import (
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
@@ -15,8 +16,10 @@ type Components struct {
 	Decoder      godecoder.Decoder
 	Logger       *zap.Logger
 	Hash         cryptography.Hasher
+	Tg           *telegram.Telegram
 }
 
-func NewComponents(conf config.AppConf, tokenManager cryptography.TokenManager, responder responder.Responder, decoder godecoder.Decoder, hash cryptography.Hasher, logger *zap.Logger) *Components {
-	return &Components{Conf: conf, TokenManager: tokenManager, Responder: responder, Decoder: decoder, Hash: hash, Logger: logger}
+func NewComponents(conf config.AppConf, tokenManager cryptography.TokenManager, responder responder.Responder, decoder godecoder.Decoder, hash cryptography.Hasher, telegram *telegram.Telegram, logger *zap.Logger) *Components {
+	return &Components{Conf: conf, TokenManager: tokenManager, Responder: responder, Decoder: decoder, Hash: hash, Logger: logger,
+		Tg: telegram}
 }

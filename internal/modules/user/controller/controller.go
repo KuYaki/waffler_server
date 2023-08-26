@@ -9,8 +9,8 @@ import (
 )
 
 type Userer interface {
-	Userinfo(w http.ResponseWriter, r *http.Request)
-	UserSave(w http.ResponseWriter, r *http.Request)
+	Info(w http.ResponseWriter, r *http.Request)
+	Save(w http.ResponseWriter, r *http.Request)
 }
 type User struct {
 	service service.Userer
@@ -22,10 +22,10 @@ func NewUserController(service service.Userer, components *component.Components)
 	return &User{service: service, Responder: components.Responder, Decoder: components.Decoder}
 }
 
-func (a *User) Userinfo(w http.ResponseWriter, r *http.Request) {
+func (a *User) Info(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (a *User) UserSave(w http.ResponseWriter, r *http.Request) {
+func (a *User) Save(w http.ResponseWriter, r *http.Request) {
 
 }

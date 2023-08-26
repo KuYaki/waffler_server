@@ -7,13 +7,14 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/user/storage"
 	"github.com/lib/pq"
 	"go.uber.org/zap"
+	"log"
 )
 
 type Userer interface {
 	Create(ctx context.Context, user models.User) int
 	Update(ctx context.Context, user models.User) error
 	GetByLogin(ctx context.Context, username string) UserOut
-	GetByID(ctx context.Context, id int) (*models.User, error)
+	GetByID(ctx context.Context, idUser int) (*models.User, error)
 }
 
 type UserService struct {
@@ -22,8 +23,13 @@ type UserService struct {
 }
 
 func (u *UserService) GetByLogin(ctx context.Context, username string) UserOut {
-	//TODO implement me
-	panic("implement me")
+	user, err := u.storage.GetByLogin(ctx, username)
+	if err != nil {
+		u.logger.Error("user: GetByLogin err", zap.Error(err))
+		return UserOut{}
+	}
+	log.Println(user)
+	return UserOut{}
 }
 
 func NewUserService(storage storage.Userer, logger *zap.Logger) *UserService {
@@ -31,8 +37,11 @@ func NewUserService(storage storage.Userer, logger *zap.Logger) *UserService {
 }
 
 func (u *UserService) Create(ctx context.Context, user models.User) int {
-
-	_, err := u.storage.Create(ctx, &user)
+	us := &models.UserDTO{
+		Username: user.Username,
+		Password: user.Hash,
+	}
+	_, err := u.storage.Create(ctx, us)
 	if err != nil {
 		if v, ok := err.(*pq.Error); ok && v.Code == "23505" {
 			return errors.UserServiceUserAlreadyExists
@@ -56,5 +65,12 @@ func (u *UserService) GetByID(ctx context.Context, id int) (*models.User, error)
 		return nil, err
 	}
 
-	return user, nil
+	us := &models.User{
+		ID:       user.ID,
+		Username: user.Username,
+		Hash:     user.Password,
+		TokenGPT: user.TokenGPT,
+	}
+
+	return us, nil
 }

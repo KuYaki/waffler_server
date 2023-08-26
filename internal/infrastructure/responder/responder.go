@@ -3,7 +3,6 @@ package responder
 import (
 	"context"
 	"errors"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/response"
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
 	"net/http"
@@ -17,7 +16,7 @@ type Response struct {
 }
 
 type Responder interface {
-	OutputJSON(w http.ResponseWriter, responseData interface{})
+	OutputJSON(w http.ResponseWriter, responseData interface{}, statusCode int)
 
 	ErrorUnauthorized(w http.ResponseWriter, err error)
 	ErrorBadRequest(w http.ResponseWriter, err error)
@@ -34,8 +33,9 @@ func NewResponder(decoder godecoder.Decoder, logger *zap.Logger) Responder {
 	return &Respond{log: logger, Decoder: decoder}
 }
 
-func (r *Respond) OutputJSON(w http.ResponseWriter, responseData interface{}) {
+func (r *Respond) OutputJSON(w http.ResponseWriter, responseData interface{}, statusCode int) {
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
+	w.WriteHeader(statusCode)
 	if err := r.Encode(w, responseData); err != nil {
 		r.log.Error("responder json encode error", zap.Error(err))
 	}
@@ -45,39 +45,18 @@ func (r *Respond) ErrorBadRequest(w http.ResponseWriter, err error) {
 	r.log.Info("http response bad request status code", zap.Error(err))
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	w.WriteHeader(http.StatusBadRequest)
-	if err := r.Encode(w, Response{
-		Success: false,
-		Message: err.Error(),
-		Data:    nil,
-	}); err != nil {
-		r.log.Info("response writer error on write", zap.Error(err))
-	}
 }
 
 func (r *Respond) ErrorForbidden(w http.ResponseWriter, err error) {
 	r.log.Warn("http response forbidden", zap.Error(err))
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	w.WriteHeader(http.StatusForbidden)
-	if err := r.Encode(w, response.Response{
-		Success: false,
-		Message: err.Error(),
-		Data:    nil,
-	}); err != nil {
-		r.log.Error("response writer error on write", zap.Error(err))
-	}
 }
 
 func (r *Respond) ErrorUnauthorized(w http.ResponseWriter, err error) {
 	r.log.Warn("http   response Unauthorized", zap.Error(err))
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	w.WriteHeader(http.StatusUnauthorized)
-	if err := r.Encode(w, response.Response{
-		Success: false,
-		Message: err.Error(),
-		Data:    nil,
-	}); err != nil {
-		r.log.Error("response writer error on write", zap.Error(err))
-	}
 }
 
 func (r *Respond) ErrorInternal(w http.ResponseWriter, err error) {
@@ -87,11 +66,4 @@ func (r *Respond) ErrorInternal(w http.ResponseWriter, err error) {
 	r.log.Error("http response internal error", zap.Error(err))
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	w.WriteHeader(http.StatusInternalServerError)
-	if err := r.Encode(w, response.Response{
-		Success: false,
-		Message: err.Error(),
-		Data:    nil,
-	}); err != nil {
-		r.log.Error("response writer error on write", zap.Error(err))
-	}
 }

@@ -6,14 +6,13 @@ import (
 	"github.com/KuYaki/waffler_server/internal/models"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"log"
 )
 
 type Userer interface {
-	Create(ctx context.Context, u *models.User) (int, error)
-	Update(ctx context.Context, u *models.User) error
-	GetByID(ctx context.Context, userID int) (*models.User, error)
-	GetByLogin(ctx context.Context, username string) (models.User, error)
+	Create(ctx context.Context, u *models.UserDTO) (int, error)
+	Update(ctx context.Context, u *models.UserDTO) error
+	GetByID(ctx context.Context, userID int) (*models.UserDTO, error)
+	GetByLogin(ctx context.Context, username string) (*models.UserDTO, error)
 }
 
 // UserStorage - хранилище пользователей
@@ -32,13 +31,13 @@ const (
 )
 
 // Create - создание пользователя в БД
-func (s *UserStorage) Create(ctx context.Context, u *models.User) (int, error) {
-	sql, args, err := sq.Insert("users").Columns("username", "hash_pass").Values(u.Username, u.Pass).ToSql()
+func (s *UserStorage) Create(ctx context.Context, u *models.UserDTO) (int, error) {
+	sql, args, err := sq.Insert("users").Columns("username", "password").Values(u.Username, u.Password).ToSql()
 
 	if err != nil {
 		return errors.InternalError, err
 	}
-	_, err = s.conn.Query(ctx, sql, args...)
+	_, err = s.conn.Exec(ctx, sql, args...)
 	if err != nil {
 		return errors.InternalError, err
 	}
@@ -47,19 +46,49 @@ func (s *UserStorage) Create(ctx context.Context, u *models.User) (int, error) {
 }
 
 // Update - обновление пользователя в БД
-func (s *UserStorage) Update(ctx context.Context, u *models.User) error {
-	log.Fatal("Implemented Update in UserStorage")
+func (s *UserStorage) Update(ctx context.Context, u *models.UserDTO) error {
+	sql, args, err := sq.Update("users").SetMap(map[string]interface{}{
+		"username":  u.Username,
+		"password":  u.Password,
+		"token_gpt": u.TokenGPT,
+	}).Where(sq.Eq{"id": u.ID}).ToSql()
+
+	if err != nil {
+		return err
+	}
+	_, err = s.conn.Exec(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-// GetByID - получение пользователя по ID из БД
-func (s *UserStorage) GetByID(ctx context.Context, userID int) (*models.User, error) {
-	log.Fatal("Implemented GetByID in UserStorage")
-	return &models.User{}, nil
+// GetByID - получение пользователя по IDUser из БД
+func (s *UserStorage) GetByID(ctx context.Context, userID int) (*models.UserDTO, error) {
+	sql, args, err := sq.Select("id", "username", "password", "token_gpt").From("users").Where(sq.Eq{"id": userID}).ToSql()
+	if err != nil {
+		return nil, err
+	}
+	u := &models.UserDTO{}
+	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Password, &u.TokenGPT)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 }
 
-func (s *UserStorage) GetByLogin(ctx context.Context, username string) (models.User, error) {
-	log.Fatal("Implemented GetByLogin in UserStorage")
-	return models.User{}, nil
+func (s *UserStorage) GetByLogin(ctx context.Context, username string) (*models.UserDTO, error) {
+	sql, args, err := sq.Select("id", "username", "password", "token_gpt").From("users").Where(sq.Eq{"username": username}).ToSql()
+	if err != nil {
+		return nil, err
+	}
+	u := &models.UserDTO{}
+	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Password, &u.TokenGPT)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 
 }

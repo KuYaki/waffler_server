@@ -8,6 +8,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/db"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/server"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/KuYaki/waffler_server/internal/router"
@@ -95,6 +96,17 @@ func (a *App) Bootstrap() Runner {
 		a.logger.Fatal("app: db error", zap.Error(err))
 		return nil
 	}
+	err = db.CreateSchemeDB(conn)
+	if err != nil {
+		a.logger.Fatal("app: create db error", zap.Error(err))
+	}
+
+	tg, err := telegram.NewTelegram(a.conf.Telegram)
+	if err != nil {
+		a.logger.Fatal("app: tg error", zap.Error(err))
+		return nil
+	}
+
 	storagesDB := storages.NewStorages(conn)
 
 	// инициализация менеджера токенов
@@ -113,12 +125,12 @@ func (a *App) Bootstrap() Runner {
 	// инициализация хешера
 	hash := cryptography.NewHash(uuID)
 
-	components := component.NewComponents(a.conf, tokenManager, responseManager, decoder, hash, a.logger)
+	components := component.NewComponents(a.conf, tokenManager, responseManager, decoder, hash, tg, a.logger)
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
 	// init router
 	var r *chi.Mux
-	r = router.NewApiRouter(controller)
+	r = router.NewApiRouter(controller, components)
 	// server configuration
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", a.conf.Server.Port),

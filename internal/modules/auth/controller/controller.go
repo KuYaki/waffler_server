@@ -58,45 +58,27 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		a.ErrorBadRequest(w, err)
 		return
 	}
-	if req.Email == "" || req.Password == "" {
+	if req.Username == "" || req.Password == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	out := a.auth.Login(r.Context(), models.User{
-		Username: req.Email,
-		Pass:     req.Password,
+		Username: req.Username,
+		Hash:     req.Password,
 	})
-	if out.ErrorCode == errors.AuthServiceUserNotVerified {
-		a.OutputJSON(w, AuthResponse{
-			Success:   false,
-			ErrorCode: out.ErrorCode,
-			Data: LoginData{
-				Message: "user email is not verified",
-			},
-		})
-		return
-	}
 
 	if out.ErrorCode != errors.NoError {
-		a.OutputJSON(w, AuthResponse{
-			Success:   false,
-			ErrorCode: out.ErrorCode,
-			Data: LoginData{
-				Message: "login or password mismatch",
-			},
-		})
+		a.OutputJSON(w, "", http.StatusUnauthorized)
+
 		return
 	}
 
-	a.OutputJSON(w, AuthResponse{
-		Success: true,
-		Data: LoginData{
-			Message:      "success login",
+	a.OutputJSON(w,
+		LoginData{
 			AccessToken:  out.AccessToken,
 			RefreshToken: out.RefreshToken,
-		},
-	})
+		}, http.StatusOK)
 }
 
 func (a *Auth) Refresh(w http.ResponseWriter, r *http.Request) {
@@ -108,22 +90,13 @@ func (a *Auth) Refresh(w http.ResponseWriter, r *http.Request) {
 	out := a.auth.AuthorizeRefresh(r.Context(), claims.ID)
 
 	if out.ErrorCode != errors.NoError {
-		a.OutputJSON(w, AuthResponse{
-			Success:   false,
-			ErrorCode: out.ErrorCode,
-			Data: LoginData{
-				Message: "login or password mismatch",
-			},
-		})
+		a.OutputJSON(w, "", http.StatusUnauthorized)
 		return
 	}
 
-	a.OutputJSON(w, AuthResponse{
-		Success: true,
-		Data: LoginData{
-			Message:      "success refresh",
+	a.OutputJSON(w,
+		LoginData{
 			AccessToken:  out.AccessToken,
 			RefreshToken: out.RefreshToken,
-		},
-	})
+		}, http.StatusOK)
 }

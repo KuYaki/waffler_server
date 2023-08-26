@@ -33,7 +33,7 @@ func NewAuthService(user uservice.Userer, components *component.Components) *Aut
 }
 
 func (a *Auth) Login(ctx context.Context, user models.User) *AuthorizeOut {
-	// 1. получаем юзера по email
+	// 1. получаем юзера по username
 	userDb := a.user.GetByLogin(ctx, user.Username)
 	if userDb.ErrorCode != errors.NoError {
 		return &AuthorizeOut{
@@ -41,7 +41,7 @@ func (a *Auth) Login(ctx context.Context, user models.User) *AuthorizeOut {
 		}
 	}
 	// 2. проверяем пароль
-	if !cryptography.CheckPassword(userDb.User.Pass, user.Pass) {
+	if !cryptography.CheckPassword(user.Hash, userDb.User.Password) {
 		return &AuthorizeOut{
 			ErrorCode: errors.AuthServiceWrongPasswordErr,
 		}
@@ -70,7 +70,7 @@ func (a *Auth) Register(ctx context.Context, username, password string) (int, in
 	}
 	dto := models.User{
 		Username: username,
-		Pass:     hashPass,
+		Hash:     hashPass,
 	}
 
 	userOut := a.user.Create(ctx, dto)
