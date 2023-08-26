@@ -2,10 +2,9 @@ package midlleware
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
+	"github.com/gin-gonic/gin"
 
 	"net/http"
 	"strings"
@@ -27,78 +26,78 @@ func NewTokenManager(responder responder.Responder, jwt cryptography.TokenManage
 	}
 }
 
-func (t *Token) CheckStrictFunc(w http.ResponseWriter, r *http.Request) {
-	tokenRaw := r.Header.Get(authorization)
+func (t *Token) CheckStrictFunc(c *gin.Context) {
+	tokenRaw := c.GetHeader(authorization)
 	tokenParts := strings.Split(tokenRaw, " ")
 	if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
-		t.ErrorForbidden(w, fmt.Errorf("wrong input data"))
+		c.IndentedJSON(http.StatusForbidden, "wrong input data")
 		return
 	}
 	_, err := t.jwt.ParseToken(tokenParts[1], cryptography.AccessToken)
 	if err != nil && err.Error() == "Token is expired" {
-		t.ErrorUnauthorized(w, errors.New("token expired"))
+		c.IndentedJSON(http.StatusUnauthorized, "token expired")
 		return
 	}
 	if err != nil {
-		t.ErrorForbidden(w, err)
+		c.IndentedJSON(http.StatusForbidden, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	c.Writer.WriteHeader(http.StatusOK)
 }
 
-func (t *Token) CheckStrict(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenRaw := r.Header.Get(authorization)
+func (t *Token) CheckStrict() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenRaw := c.GetHeader(authorization)
 		tokenParts := strings.Split(tokenRaw, " ")
 		if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
-			t.ErrorForbidden(w, fmt.Errorf("wrong input data"))
+			c.IndentedJSON(http.StatusForbidden, "wrong input data")
 			return
 		}
 		u, err := t.jwt.ParseToken(tokenParts[1], cryptography.AccessToken)
 		if err != nil && err.Error() == "Token is expired" {
-			t.ErrorUnauthorized(w, errors.New("token expired"))
+			c.IndentedJSON(http.StatusUnauthorized, "token expired")
 			return
 		}
 		if err != nil {
-			t.ErrorForbidden(w, err)
+			c.IndentedJSON(http.StatusForbidden, err)
 			return
 		}
-		ctx := context.WithValue(r.Context(), UserRequest{}, u)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+		ctx := context.WithValue(context.Background(), UserRequest{}, u)
+		c.Request.WithContext(ctx)
+	}
 }
 
-func (t *Token) CheckRefresh(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenRaw := r.Header.Get(authorization)
+func (t *Token) CheckRefresh() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenRaw := c.GetHeader(authorization)
 		tokenParts := strings.Split(tokenRaw, " ")
 		if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
-			t.ErrorForbidden(w, fmt.Errorf("wrong input data"))
+			c.IndentedJSON(http.StatusForbidden, "wrong input data")
 			return
 		}
 		u, err := t.jwt.ParseToken(tokenParts[1], cryptography.RefreshToken)
 		if err != nil && err.Error() == "Token expired" {
-			t.ErrorUnauthorized(w, err)
+			c.IndentedJSON(http.StatusUnauthorized, "token expired")
 			return
 		}
 		if err != nil {
-			t.ErrorForbidden(w, err)
+			c.IndentedJSON(http.StatusForbidden, err)
 			return
 		}
-		ctx := context.WithValue(r.Context(), UserRequest{}, u)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+		ctx := context.WithValue(context.Background(), UserRequest{}, u)
+		c.Request.WithContext(ctx)
+	}
 }
 
-func (t *Token) Check(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get(authorization)
+func (t *Token) Check() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader(authorization)
 		u, err := t.jwt.ParseToken(token, cryptography.AccessToken)
 		if err != nil {
 			u = cryptography.UserClaims{}
 		}
-		ctx := context.WithValue(r.Context(), UserRequest{}, u)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+		ctx := context.WithValue(context.Background(), UserRequest{}, u)
+		c.Request.WithContext(ctx)
+	}
 }

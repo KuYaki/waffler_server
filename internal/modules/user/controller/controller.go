@@ -4,13 +4,13 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/modules/user/service"
+	"github.com/gin-gonic/gin"
 	"github.com/ptflp/godecoder"
-	"net/http"
 )
 
 type Userer interface {
-	Info(w http.ResponseWriter, r *http.Request)
-	Save(w http.ResponseWriter, r *http.Request)
+	Info(c *gin.Context)
+	Save(c *gin.Context)
 }
 type User struct {
 	service service.Userer
@@ -22,10 +22,10 @@ func NewUserController(service service.Userer, components *component.Components)
 	return &User{service: service, Responder: components.Responder, Decoder: components.Decoder}
 }
 
-func (a *User) Info(w http.ResponseWriter, r *http.Request) {
+func (a *User) Info(c *gin.Context) {
 
 }
 
-func (a *User) Save(w http.ResponseWriter, r *http.Request) {
+func (a *User) Save(c *gin.Context) {
 
 }

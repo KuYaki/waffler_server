@@ -4,43 +4,52 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/modules"
+	"github.com/gin-gonic/gin"
 	"github.com/go-chi/chi/v5"
 )
 
 func NewApiRouter(controllers *modules.Controllers, components *component.Components) *chi.Mux {
+	newR := gin.Default()
 	r := chi.NewRouter()
 	authCheck := midlleware.NewTokenManager(components.Responder, components.TokenManager)
 
-	r.Get("/", controllers.Waffler.Hello)
+	newR.GET("/", controllers.Waffler.Hello)
 
-	r.Route("/auth", func(r chi.Router) {
-		r.Post("/register", controllers.Auth.Register)
-		r.Post("/login", controllers.Auth.Login)
-		r.Route("/refresh", func(r chi.Router) {
-			r.Use(authCheck.CheckRefresh)
-			r.Post("/", controllers.Auth.Refresh)
-		})
+	auth := newR.Group("/auth")
+	{
+		auth.POST("/register", controllers.Auth.Register)
+		auth.POST("/login", controllers.Auth.Login)
+		auth.Group("/refresh")
+		{
+			auth.Use(authCheck.CheckRefresh())
+			auth.POST("/", controllers.Auth.Refresh)
 
-	})
+		}
 
-	r.Route("/user", func(r chi.Router) {
+	}
+
+	user := newR.Group("/user")
+	{
 		userController := controllers.User
-		r.Post("/save", userController.Save)
-		r.Post("/info", userController.Info)
+		user.Use(authCheck.CheckStrict())
+		user.POST("/save", userController.Save)
+		user.POST("/info", userController.Info)
 		//r.Route("/profile", func(r chi.Router) {
 		//	r.Use(authCheck.CheckStrict)
 		//	r.Get("/", userController.Profile)
 		//	r.Post("/changed_password", userController.ChangePassword)
 		//})
-	})
+	}
 
-	r.Route("/source", func(r chi.Router) {
-		r.Use(authCheck.CheckStrict)
-		r.Post("/search", controllers.Waffler.Search)
-		r.Post("/score", controllers.Waffler.Score)
-		r.Post("info", controllers.Waffler.Info)
-		r.Post("/parse", controllers.Waffler.Parse)
-	})
+	source := newR.Group("/source")
+	{
+		sourceController := controllers.Waffler
+		source.Use(authCheck.CheckStrict())
+		source.POST("/search", sourceController.Search)
+		source.POST("/score", sourceController.Score)
+		source.POST("/info", sourceController.Info)
+		source.POST("/parse", sourceController.Parse)
+	}
 
 	return r
 }

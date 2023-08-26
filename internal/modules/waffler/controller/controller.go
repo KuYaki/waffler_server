@@ -5,6 +5,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
+	"github.com/gin-gonic/gin"
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
 	"net/http"
@@ -12,12 +13,12 @@ import (
 )
 
 type Waffler interface {
-	Hello(http.ResponseWriter, *http.Request)
-	HomePage(http.ResponseWriter, *http.Request)
-	Search(http.ResponseWriter, *http.Request)
-	Score(http.ResponseWriter, *http.Request)
-	Info(http.ResponseWriter, *http.Request)
-	Parse(http.ResponseWriter, *http.Request)
+	Hello(c *gin.Context)
+	HomePage(c *gin.Context)
+	Search(c *gin.Context)
+	Score(c *gin.Context)
+	Info(c *gin.Context)
+	Parse(c *gin.Context)
 }
 
 type Waffl struct {
@@ -32,22 +33,21 @@ func NewWaffl(service service.Waffler, components *component.Components) Waffler
 		log: components.Logger, Responder: components.Responder, Decoder: components.Decoder}
 }
 
-func (wa *Waffl) HomePage(w http.ResponseWriter, r *http.Request) {
+func (wa *Waffl) HomePage(c *gin.Context) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (wa *Waffl) Search(w http.ResponseWriter, r *http.Request) {
+func (wa *Waffl) Search(c *gin.Context) {
 	data := &models.Search{}
-	err := wa.Decoder.Decode(r.Body, data)
+	err := c.BindJSON(data)
 	if err != nil {
-		wa.Responder.ErrorBadRequest(w, err)
 		return
 	}
 
 	_, err = url.ParseRequestURI(data.Query)
 	if err != nil {
-		wa.Responder.ErrorBadRequest(w, err)
+		c.IndentedJSON(http.StatusBadRequest, err)
 		return
 	}
 
@@ -55,25 +55,21 @@ func (wa *Waffl) Search(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (wa *Waffl) Score(w http.ResponseWriter, r *http.Request) {
+func (wa *Waffl) Score(c *gin.Context) {
 	data := &models.Score{}
-	err := wa.Decoder.Decode(r.Body, data)
-	if err != nil {
-		wa.Responder.ErrorBadRequest(w, err)
-		return
-	}
+	c.BindJSON(data)
 
 }
-func (wa *Waffl) Info(w http.ResponseWriter, r *http.Request) {
+func (wa *Waffl) Info(c *gin.Context) {
 
 }
 
-func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
+func (wa *Waffl) Parse(c *gin.Context) {
 
 	//wa.service.Search(data)
 }
-func (wa *Waffl) Hello(writer http.ResponseWriter, request *http.Request) {
-	_, err := writer.Write([]byte("Hello, world!"))
+func (wa *Waffl) Hello(c *gin.Context) {
+	_, err := c.Writer.Write([]byte("Hello, world!"))
 	if err != nil {
 		wa.log.Error("error writing response", zap.Error(err))
 	}

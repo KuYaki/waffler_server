@@ -8,15 +8,16 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/auth/service"
+	"github.com/gin-gonic/gin"
 	"github.com/ptflp/godecoder"
 
 	"net/http"
 )
 
 type Auther interface {
-	Register(http.ResponseWriter, *http.Request)
-	Login(http.ResponseWriter, *http.Request)
-	Refresh(w http.ResponseWriter, r *http.Request)
+	Register(c *gin.Context)
+	Login(c *gin.Context)
+	Refresh(c *gin.Context)
 }
 
 type Auth struct {
@@ -29,74 +30,70 @@ func NewAuth(service service.Auther, components *component.Components) Auther {
 	return &Auth{auth: service, Responder: components.Responder, Decoder: components.Decoder}
 }
 
-func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
+func (a *Auth) Register(c *gin.Context) {
 	var req RegisterRequest
-	err := a.Decode(r.Body, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if err := c.BindJSON(&req); err != nil {
 		return
 	}
 
 	if req.Password != req.RetypePassword {
-		w.WriteHeader(http.StatusBadRequest)
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"error": "passwords don't match",
+		})
+
 		return
 	}
 
 	errorCode, myErr := a.auth.Register(context.Background(), req.Username, req.Password)
 	if myErr != errors.NoError {
-		w.WriteHeader(errorCode)
+		c.IndentedJSON(errorCode, myErr)
 		return
 	}
 
-	w.WriteHeader(errorCode)
+	c.Writer.WriteHeader(http.StatusOK)
 }
 
-func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
+func (a *Auth) Login(c *gin.Context) {
 	var req LoginRequest
-	err := a.Decode(r.Body, &req)
-	if err != nil {
-		a.ErrorBadRequest(w, err)
+	if err := c.BindJSON(&req); err != nil {
 		return
 	}
 	if req.Username == "" || req.Password == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		c.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	out := a.auth.Login(r.Context(), models.User{
+	out := a.auth.Login(context.Background(), models.User{
 		Username: req.Username,
 		Hash:     req.Password,
 	})
 
 	if out.ErrorCode != errors.NoError {
-		a.OutputJSON(w, "", http.StatusUnauthorized)
-
+		c.IndentedJSON(http.StatusUnauthorized, out.ErrorCode)
 		return
 	}
 
-	a.OutputJSON(w,
-		LoginData{
-			AccessToken:  out.AccessToken,
-			RefreshToken: out.RefreshToken,
-		}, http.StatusOK)
+	c.IndentedJSON(http.StatusOK, LoginData{
+		AccessToken:  out.AccessToken,
+		RefreshToken: out.RefreshToken,
+	})
 }
 
-func (a *Auth) Refresh(w http.ResponseWriter, r *http.Request) {
-	claims, err := handler.ExtractUser(r)
+func (a *Auth) Refresh(c *gin.Context) {
+	claims, err := handler.ExtractUser(c.Request)
 	if err != nil {
-		a.ErrorBadRequest(w, err)
+		c.IndentedJSON(http.StatusBadRequest, err)
 		return
 	}
-	out := a.auth.AuthorizeRefresh(r.Context(), claims.ID)
-
+	out := a.auth.AuthorizeRefresh(context.Background(), claims.ID)
 	if out.ErrorCode != errors.NoError {
-		a.OutputJSON(w, "", http.StatusUnauthorized)
+		c.IndentedJSON(http.StatusUnauthorized, out.ErrorCode)
 		return
 	}
 
-	a.OutputJSON(w,
-		LoginData{
-			AccessToken:  out.AccessToken,
-			RefreshToken: out.RefreshToken,
-		}, http.StatusOK)
+	c.IndentedJSON(http.StatusOK, LoginData{
+		AccessToken:  out.AccessToken,
+		RefreshToken: out.RefreshToken,
+	})
+
 }
