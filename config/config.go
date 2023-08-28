@@ -63,9 +63,9 @@ func NewAppConf() AppConf {
 		},
 		DB: &DB{
 			Name:     os.Getenv("DB_NAME"),
-			User:     os.Getenv("DB_USER"),
-			Password: os.Getenv("DB_PASSWORD"),
-			Host:     os.Getenv("HOST"),
+			User:     os.Getenv("POSTGRES_USER"),
+			Password: os.Getenv("POSTGRES_PASSWORD"),
+			Host:     os.Getenv("DB_HOST"),
 			Port:     os.Getenv("DB_PORT"),
 		},
 		Telegram: &Telegram{
