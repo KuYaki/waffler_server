@@ -76,6 +76,12 @@ func NewAppConf() AppConf {
 		ChatGPT: &ChatGPT{
 			Token: os.Getenv("CHAT_GPT_TOKEN"),
 		},
+		Token: &Token{
+			AccessTTL:     time.Duration(getenvInt("ACCESS_TTL")),
+			RefreshTTL:    time.Duration(getenvInt("REFRESH_TTL")),
+			AccessSecret:  os.Getenv("ACCESS_SECRET"),
+			RefreshSecret: os.Getenv("REFRESH_SECRET"),
+		},
 	}
 }
 

@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/errors"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/handler"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/models"
@@ -44,9 +43,9 @@ func (a *Auth) Register(c *gin.Context) {
 		return
 	}
 
-	errorCode, myErr := a.auth.Register(context.Background(), req.Username, req.Password)
-	if myErr != errors.NoError {
-		c.IndentedJSON(errorCode, myErr)
+	err := a.auth.Register(context.Background(), req.Username, req.Password)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, err)
 		return
 	}
 
@@ -63,13 +62,12 @@ func (a *Auth) Login(c *gin.Context) {
 		return
 	}
 
-	out := a.auth.Login(context.Background(), models.User{
+	out, err := a.auth.Login(context.Background(), models.User{
 		Username: req.Username,
-		Hash:     req.Password,
+		Password: req.Password,
 	})
-
-	if out.ErrorCode != errors.NoError {
-		c.IndentedJSON(http.StatusUnauthorized, out.ErrorCode)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, err)
 		return
 	}
 
@@ -85,9 +83,9 @@ func (a *Auth) Refresh(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, err)
 		return
 	}
-	out := a.auth.AuthorizeRefresh(context.Background(), claims.ID)
-	if out.ErrorCode != errors.NoError {
-		c.IndentedJSON(http.StatusUnauthorized, out.ErrorCode)
+	out, err := a.auth.AuthorizeRefresh(context.Background(), claims.ID)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, err)
 		return
 	}
 

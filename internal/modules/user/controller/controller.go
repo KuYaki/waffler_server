@@ -27,5 +27,16 @@ func (a *User) Info(c *gin.Context) {
 }
 
 func (a *User) Save(c *gin.Context) {
-
+	//claims, err := handler.ExtractUser(c.Request)
+	//if err != nil {
+	//	c.IndentedJSON(http.StatusBadRequest, "error claims")
+	//}
+	//
+	//userSave := &UserSave{}
+	//err := c.BindJSON(userSave)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//a.service.GetByLogin()
 }

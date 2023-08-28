@@ -1,9 +1,9 @@
 package cryptography
 
 import (
+	"errors"
 	"fmt"
 	"github.com/KuYaki/waffler_server/config"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/errors"
 	"github.com/golang-jwt/jwt/v4"
 	"time"
 )
@@ -53,7 +53,7 @@ func (o *TokenJWT) CreateToken(userID string, ttl time.Duration, kind int) (stri
 	case RefreshToken:
 		secret = o.RefreshSecret
 	default:
-		return "", errors.TokenTypeError
+		return "", errors.New("token type error")
 	}
 
 	return token.SignedString(secret)
@@ -73,7 +73,7 @@ func (o *TokenJWT) ParseToken(inputToken string, kind int) (UserClaims, error) {
 		case RefreshToken:
 			secret = o.RefreshSecret
 		default:
-			return "", errors.TokenTypeError
+			return "", errors.New("token type error")
 		}
 		_ = secret
 

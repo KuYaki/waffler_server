@@ -5,12 +5,10 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/gin-gonic/gin"
-	"github.com/go-chi/chi/v5"
 )
 
-func NewApiRouter(controllers *modules.Controllers, components *component.Components) *chi.Mux {
+func NewApiRouter(controllers *modules.Controllers, components *component.Components) *gin.Engine {
 	newR := gin.Default()
-	r := chi.NewRouter()
 	authCheck := midlleware.NewTokenManager(components.Responder, components.TokenManager)
 
 	newR.GET("/", controllers.Waffler.Hello)
@@ -51,5 +49,5 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 		source.POST("/parse", sourceController.Parse)
 	}
 
-	return r
+	return newR
 }

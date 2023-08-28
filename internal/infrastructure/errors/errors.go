@@ -1,4 +1,4 @@
-package errors
+package errorss
 
 import "fmt"
 
@@ -24,4 +24,5 @@ const (
 	AuthServiceUserNotVerified
 	UserServiceCreateUserErr
 	UserServiceUserAlreadyExists
+	UserServiceRetrieveUserErr
 )

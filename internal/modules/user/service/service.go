@@ -2,19 +2,17 @@ package service
 
 import (
 	"context"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/errors"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/user/storage"
-	"github.com/lib/pq"
 	"go.uber.org/zap"
-	"log"
 )
 
 type Userer interface {
-	Create(ctx context.Context, user models.User) int
+	Create(ctx context.Context, user models.User) error
 	Update(ctx context.Context, user models.User) error
-	GetByLogin(ctx context.Context, username string) UserOut
-	GetByID(ctx context.Context, idUser int) (*models.User, error)
+	GetByLogin(ctx context.Context, username string) (*models.UserDTO, error)
+	GetByID(ctx context.Context, id int) (*models.User, error)
 }
 
 type UserService struct {
@@ -22,35 +20,31 @@ type UserService struct {
 	logger  *zap.Logger
 }
 
-func (u *UserService) GetByLogin(ctx context.Context, username string) UserOut {
-	user, err := u.storage.GetByLogin(ctx, username)
+func (u *UserService) GetByLogin(ctx context.Context, username string) (*models.UserDTO, error) {
+	user, err := u.storage.GetByUsername(ctx, username)
 	if err != nil {
-		u.logger.Error("user: GetByLogin err", zap.Error(err))
-		return UserOut{}
+		u.logger.Error("user: GetByUsername err", zap.Error(err))
+		return nil, err
 	}
-	log.Println(user)
-	return UserOut{}
+
+	return user, nil
 }
 
-func NewUserService(storage storage.Userer, logger *zap.Logger) *UserService {
-	return &UserService{storage: storage, logger: logger}
+func NewUserService(storage storage.Userer, components *component.Components) *UserService {
+	return &UserService{storage: storage, logger: components.Logger}
 }
 
-func (u *UserService) Create(ctx context.Context, user models.User) int {
+func (u *UserService) Create(ctx context.Context, user models.User) error {
 	us := &models.UserDTO{
 		Username: user.Username,
-		Password: user.Hash,
+		Hash:     user.Password,
 	}
-	_, err := u.storage.Create(ctx, us)
+	err := u.storage.Create(ctx, us)
 	if err != nil {
-		if v, ok := err.(*pq.Error); ok && v.Code == "23505" {
-			return errors.UserServiceUserAlreadyExists
-
-		}
-		return errors.UserServiceCreateUserErr
+		return err
 	}
 
-	return errors.NoError
+	return nil
 
 }
 
@@ -68,7 +62,7 @@ func (u *UserService) GetByID(ctx context.Context, id int) (*models.User, error)
 	us := &models.User{
 		ID:       user.ID,
 		Username: user.Username,
-		Hash:     user.Password,
+		Password: user.Hash,
 		TokenGPT: user.TokenGPT,
 	}
 

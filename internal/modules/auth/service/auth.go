@@ -2,15 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/errors"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/models"
 	uservice "github.com/KuYaki/waffler_server/internal/modules/user/service"
-
 	"go.uber.org/zap"
-	"net/http"
 	"strconv"
 )
 
@@ -32,79 +30,67 @@ func NewAuthService(user uservice.Userer, components *component.Components) *Aut
 	}
 }
 
-func (a *Auth) Login(ctx context.Context, user models.User) *AuthorizeOut {
+func (a *Auth) Login(ctx context.Context, user models.User) (*AuthorizeOut, error) {
 	// 1. получаем юзера по username
-	userDb := a.user.GetByLogin(ctx, user.Username)
-	if userDb.ErrorCode != errors.NoError {
-		return &AuthorizeOut{
-			ErrorCode: userDb.ErrorCode,
-		}
+	userDb, err := a.user.GetByLogin(context.Background(), user.Username)
+	if err != nil {
+		return nil, err
 	}
 	// 2. проверяем пароль
-	if !cryptography.CheckPassword(user.Hash, userDb.User.Password) {
-		return &AuthorizeOut{
-			ErrorCode: errors.AuthServiceWrongPasswordErr,
-		}
+	if !cryptography.CheckPassword(userDb.Hash, user.Password) {
+		a.logger.Error("user: CheckPassword err", zap.Error(err))
+		return nil, errors.New("wrong password")
 	}
-	user.ID = userDb.User.ID
+	user.ID = userDb.ID
 
 	// 3. генерируем токены
 	accessToken, refreshToken, err := a.generateTokens(&user)
 	if err != nil {
-		return &AuthorizeOut{
-			ErrorCode: errors.AuthServiceTokenGenerationErr,
-		}
+		a.logger.Error("user: generateTokens err", zap.Error(err))
+		return nil, err
 	}
 	// 4. возвращаем токены
 	return &AuthorizeOut{
 		UserID:       user.ID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-	}
+	}, nil
 }
 
-func (a *Auth) Register(ctx context.Context, username, password string) (int, int) {
+func (a *Auth) Register(ctx context.Context, username, password string) error {
 	hashPass, err := cryptography.HashPassword(password)
 	if err != nil {
-		return http.StatusInternalServerError, errors.HashPasswordError
+		return err
 	}
 	dto := models.User{
 		Username: username,
-		Hash:     hashPass,
+		Password: hashPass,
 	}
 
-	userOut := a.user.Create(ctx, dto)
-	if userOut != errors.NoError {
-		if userOut == errors.UserServiceUserAlreadyExists {
-			return http.StatusConflict, userOut
-
-		}
-		return http.StatusInternalServerError, userOut
+	err = a.user.Create(ctx, dto)
+	if err != nil {
+		return err
 	}
 
-	return http.StatusOK, errors.NoError
+	return nil
 }
 
-func (a *Auth) AuthorizeRefresh(ctx context.Context, idUser int) *AuthorizeOut {
+func (a *Auth) AuthorizeRefresh(ctx context.Context, idUser int) (*AuthorizeOut, error) {
 	userOut, err := a.user.GetByID(ctx, idUser)
 	if err != nil {
-		return &AuthorizeOut{
-			ErrorCode: errors.AuthServiceGeneralErr,
-		}
+		return nil, err
 	}
 
 	accessToken, refreshToken, err := a.generateTokens(userOut)
 	if err != nil {
-		return &AuthorizeOut{
-			ErrorCode: errors.AuthServiceTokenGenerationErr,
-		}
+		return nil, err
 	}
 
 	return &AuthorizeOut{
 		UserID:       idUser,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-	}
+	}, nil
 }
 
 func (a *Auth) generateTokens(user *models.User) (string, string, error) {

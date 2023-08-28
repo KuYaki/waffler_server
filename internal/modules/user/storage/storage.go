@@ -2,17 +2,16 @@ package storage
 
 import (
 	"context"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/errors"
 	"github.com/KuYaki/waffler_server/internal/models"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Userer interface {
-	Create(ctx context.Context, u *models.UserDTO) (int, error)
+	Create(ctx context.Context, u *models.UserDTO) error
 	Update(ctx context.Context, u *models.UserDTO) error
 	GetByID(ctx context.Context, userID int) (*models.UserDTO, error)
-	GetByLogin(ctx context.Context, username string) (*models.UserDTO, error)
+	GetByUsername(ctx context.Context, username string) (*models.UserDTO, error)
 }
 
 // UserStorage - хранилище пользователей
@@ -31,25 +30,41 @@ const (
 )
 
 // Create - создание пользователя в БД
-func (s *UserStorage) Create(ctx context.Context, u *models.UserDTO) (int, error) {
-	sql, args, err := sq.Insert("users").Columns("username", "password").Values(u.Username, u.Password).ToSql()
+func (s *UserStorage) Create(ctx context.Context, u *models.UserDTO) error {
+	sql, args, err := sq.Insert("users").PlaceholderFormat(sq.Dollar).
+		Columns("username", "password_hash").
+		Values(u.Username, u.Hash).ToSql()
 
 	if err != nil {
-		return errors.InternalError, err
+		return err
 	}
 	_, err = s.conn.Exec(ctx, sql, args...)
 	if err != nil {
-		return errors.InternalError, err
+		return err
 	}
 
-	return 0, err
+	return err
+}
+func (s *UserStorage) CreateTokenGPT(ctx context.Context, token string) error {
+	sql, args, err := sq.Insert("users").PlaceholderFormat(sq.Dollar).
+		Columns("token_gpt").Values(token).ToSql()
+
+	if err != nil {
+		return err
+	}
+	_, err = s.conn.Exec(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Update - обновление пользователя в БД
 func (s *UserStorage) Update(ctx context.Context, u *models.UserDTO) error {
 	sql, args, err := sq.Update("users").SetMap(map[string]interface{}{
 		"username":  u.Username,
-		"password":  u.Password,
+		"password":  u.Hash,
 		"token_gpt": u.TokenGPT,
 	}).Where(sq.Eq{"id": u.ID}).ToSql()
 
@@ -70,7 +85,7 @@ func (s *UserStorage) GetByID(ctx context.Context, userID int) (*models.UserDTO,
 		return nil, err
 	}
 	u := &models.UserDTO{}
-	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Password, &u.TokenGPT)
+	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Hash, &u.TokenGPT)
 	if err != nil {
 		return nil, err
 	}
@@ -78,13 +93,14 @@ func (s *UserStorage) GetByID(ctx context.Context, userID int) (*models.UserDTO,
 	return u, nil
 }
 
-func (s *UserStorage) GetByLogin(ctx context.Context, username string) (*models.UserDTO, error) {
-	sql, args, err := sq.Select("id", "username", "password", "token_gpt").From("users").Where(sq.Eq{"username": username}).ToSql()
+func (s *UserStorage) GetByUsername(ctx context.Context, username string) (*models.UserDTO, error) {
+	sql, args, err := sq.Select("id", "username", "password_hash", "token_gpt").PlaceholderFormat(sq.Dollar).
+		From("users").Where(sq.Eq{"username": username}).ToSql()
 	if err != nil {
 		return nil, err
 	}
 	u := &models.UserDTO{}
-	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Password, &u.TokenGPT)
+	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Hash, &u.TokenGPT)
 	if err != nil {
 		return nil, err
 	}

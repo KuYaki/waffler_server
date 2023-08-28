@@ -56,7 +56,7 @@ func (wa *Waffl) Search(c *gin.Context) {
 }
 
 func (wa *Waffl) Score(c *gin.Context) {
-	data := &models.Score{}
+	data := &models.Source{}
 	c.BindJSON(data)
 
 }

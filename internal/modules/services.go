@@ -15,7 +15,7 @@ type Services struct {
 }
 
 func NewServices(storages *storages.Storages, components *component.Components) *Services {
-	userService := uservice.NewUserService(storages.User, components.Logger)
+	userService := uservice.NewUserService(storages.User, components)
 	return &Services{
 		User:         userService,
 		Auth:         aservice.NewAuthService(userService, components),
