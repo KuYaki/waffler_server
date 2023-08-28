@@ -32,7 +32,7 @@ func NewAuthService(user uservice.Userer, components *component.Components) *Aut
 
 func (a *Auth) Login(ctx context.Context, user models.User) (*AuthorizeOut, error) {
 	// 1. получаем юзера по username
-	userDb, err := a.user.GetByLogin(context.Background(), user.Username)
+	userDb, err := a.user.GetByLogin(ctx, user.Username)
 	if err != nil {
 		return nil, err
 	}

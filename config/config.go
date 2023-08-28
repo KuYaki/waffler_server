@@ -77,8 +77,8 @@ func NewAppConf() AppConf {
 			Token: os.Getenv("CHAT_GPT_TOKEN"),
 		},
 		Token: &Token{
-			AccessTTL:     time.Duration(getenvInt("ACCESS_TTL")),
-			RefreshTTL:    time.Duration(getenvInt("REFRESH_TTL")),
+			AccessTTL:     time.Duration(getenvInt("ACCESS_TTL")) * time.Minute,
+			RefreshTTL:    time.Duration(getenvInt("REFRESH_TTL")) * time.Minute,
 			AccessSecret:  os.Getenv("ACCESS_SECRET"),
 			RefreshSecret: os.Getenv("REFRESH_SECRET"),
 		},

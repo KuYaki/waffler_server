@@ -49,7 +49,22 @@ func (u *UserService) Create(ctx context.Context, user models.User) error {
 }
 
 func (u *UserService) Update(ctx context.Context, user models.User) error {
-	panic("implement me")
+	userDB, err := u.storage.GetByID(ctx, user.ID)
+	if err != nil {
+		u.logger.Error("user: GetByID err", zap.Error(err))
+		return err
+	}
+
+	userDB.TokenGPT.String = user.TokenGPT
+	userDB.TokenGPT.Valid = true
+
+	err = u.storage.Update(ctx, userDB)
+	if err != nil {
+		u.logger.Error("user: Update err", zap.Error(err))
+		return err
+	}
+
+	return nil
 }
 
 func (u *UserService) GetByID(ctx context.Context, id int) (*models.User, error) {
@@ -63,7 +78,7 @@ func (u *UserService) GetByID(ctx context.Context, id int) (*models.User, error)
 		ID:       user.ID,
 		Username: user.Username,
 		Password: user.Hash,
-		TokenGPT: user.TokenGPT,
+		TokenGPT: user.TokenGPT.String,
 	}
 
 	return us, nil

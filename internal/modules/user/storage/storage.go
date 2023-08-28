@@ -62,11 +62,12 @@ func (s *UserStorage) CreateTokenGPT(ctx context.Context, token string) error {
 
 // Update - обновление пользователя в БД
 func (s *UserStorage) Update(ctx context.Context, u *models.UserDTO) error {
-	sql, args, err := sq.Update("users").SetMap(map[string]interface{}{
-		"username":  u.Username,
-		"password":  u.Hash,
-		"token_gpt": u.TokenGPT,
-	}).Where(sq.Eq{"id": u.ID}).ToSql()
+	sql, args, err := sq.Update("users").PlaceholderFormat(sq.Dollar).
+		SetMap(map[string]interface{}{
+			"username":      u.Username,
+			"password_hash": u.Hash,
+			"token_gpt":     u.TokenGPT,
+		}).Where(sq.Eq{"id": u.ID}).ToSql()
 
 	if err != nil {
 		return err
@@ -80,12 +81,13 @@ func (s *UserStorage) Update(ctx context.Context, u *models.UserDTO) error {
 
 // GetByID - получение пользователя по IDUser из БД
 func (s *UserStorage) GetByID(ctx context.Context, userID int) (*models.UserDTO, error) {
-	sql, args, err := sq.Select("id", "username", "password", "token_gpt").From("users").Where(sq.Eq{"id": userID}).ToSql()
+	sql, args, err := sq.Select("id", "username", "password_hash", "token_gpt").PlaceholderFormat(sq.Dollar).
+		From("users").Where(sq.Eq{"id": userID}).ToSql()
 	if err != nil {
 		return nil, err
 	}
 	u := &models.UserDTO{}
-	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Hash, &u.TokenGPT)
+	err = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Hash, &u.TokenGPT)
 	if err != nil {
 		return nil, err
 	}

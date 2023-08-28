@@ -1,16 +1,19 @@
 package models
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 func (d *UserDTO) GetShemaName() string {
 	return "users"
 }
 
 type UserDTO struct {
-	ID       int    `json:"id"`
-	Username string `json:"username,omitempty"`
-	Hash     string `json:"password,omitempty"`
-	TokenGPT string `json:"token_gpt,omitempty"`
+	ID       int            `json:"id"`
+	Username string         `json:"username,omitempty"`
+	Hash     string         `json:"password,omitempty"`
+	TokenGPT sql.NullString `json:"token_gpt,omitempty"`
 }
 
 type Source struct {

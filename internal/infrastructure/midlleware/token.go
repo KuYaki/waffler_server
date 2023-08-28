@@ -5,6 +5,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/gin-gonic/gin"
+	"log"
 
 	"net/http"
 	"strings"
@@ -49,6 +50,7 @@ func (t *Token) CheckStrictFunc(c *gin.Context) {
 func (t *Token) CheckStrict() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenRaw := c.GetHeader(authorization)
+		log.Println(tokenRaw)
 		tokenParts := strings.Split(tokenRaw, " ")
 		if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
 			c.IndentedJSON(http.StatusForbidden, "wrong input data")
@@ -63,8 +65,10 @@ func (t *Token) CheckStrict() gin.HandlerFunc {
 			c.IndentedJSON(http.StatusForbidden, err)
 			return
 		}
-		ctx := context.WithValue(context.Background(), UserRequest{}, u)
+
+		ctx := context.WithValue(c.Request.Context(), UserRequest{}, u)
 		c.Request.WithContext(ctx)
+		c.Next()
 	}
 }
 
