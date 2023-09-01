@@ -66,7 +66,9 @@ func (s *UserStorage) Update(ctx context.Context, u *models.UserDTO) error {
 		SetMap(map[string]interface{}{
 			"username":      u.Username,
 			"password_hash": u.Hash,
-			"token_gpt":     u.TokenGPT,
+			"parser_token":  u.ParserToken,
+			"parser_type":   u.ParserType,
+			"locale":        u.Locale,
 		}).Where(sq.Eq{"id": u.ID}).ToSql()
 
 	if err != nil {
@@ -81,13 +83,13 @@ func (s *UserStorage) Update(ctx context.Context, u *models.UserDTO) error {
 
 // GetByID - получение пользователя по IDUser из БД
 func (s *UserStorage) GetByID(ctx context.Context, userID int) (*models.UserDTO, error) {
-	sql, args, err := sq.Select("id", "username", "password_hash", "token_gpt").PlaceholderFormat(sq.Dollar).
+	sql, args, err := sq.Select("id", "username", "password_hash", "parser_token", "parser_type", "locale").PlaceholderFormat(sq.Dollar).
 		From("users").Where(sq.Eq{"id": userID}).ToSql()
 	if err != nil {
 		return nil, err
 	}
 	u := &models.UserDTO{}
-	err = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Hash, &u.TokenGPT)
+	err = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Hash, &u.ParserToken, &u.ParserType, &u.Locale)
 	if err != nil {
 		return nil, err
 	}
@@ -96,13 +98,15 @@ func (s *UserStorage) GetByID(ctx context.Context, userID int) (*models.UserDTO,
 }
 
 func (s *UserStorage) GetByUsername(ctx context.Context, username string) (*models.UserDTO, error) {
-	sql, args, err := sq.Select("id", "username", "password_hash", "token_gpt").PlaceholderFormat(sq.Dollar).
+	sql, args, err := sq.Select("id", "username", "password_hash",
+		"parser_token", "parser_type", "locale").PlaceholderFormat(sq.Dollar).
 		From("users").Where(sq.Eq{"username": username}).ToSql()
 	if err != nil {
 		return nil, err
 	}
 	u := &models.UserDTO{}
-	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Hash, &u.TokenGPT)
+	_ = s.conn.QueryRow(ctx, sql, args...).Scan(&u.ID, &u.Username, &u.Hash,
+		&u.ParserToken, &u.ParserType, &u.Locale)
 	if err != nil {
 		return nil, err
 	}

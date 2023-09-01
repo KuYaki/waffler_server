@@ -1,12 +1,14 @@
 module github.com/KuYaki/waffler_server
 
-go 1.20
+go 1.21
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
+	github.com/gin-gonic/gin v1.9.1
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.3.0
+	github.com/gotd/td v0.85.0
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/jaskaur18/gotgproto v1.1.3
 	github.com/joho/godotenv v1.5.1
@@ -30,7 +32,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/glebarez/sqlite v1.9.0 // indirect
 	github.com/go-faster/errors v0.6.1 // indirect
@@ -42,7 +43,6 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gotd/ige v0.2.2 // indirect
 	github.com/gotd/neo v0.1.5 // indirect
-	github.com/gotd/td v0.85.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect

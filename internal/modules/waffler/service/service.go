@@ -3,34 +3,95 @@ package service
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
+	tg "github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/models"
+	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/storage"
 	"go.uber.org/zap"
 )
 
 type Waffler interface {
-	Search(*models.Search)
+	Search(search *models.Search) (*message.SearchResponse, error)
+	InfoSource(domain string) *message.InfoRequest
+	Score(request *message.ScoreRequest) (*message.ScoreResponse, error)
+	ParseSource(search *message.ParserRequest) error
 }
 
 type WafflerService struct {
 	storage storage.WafflerStorager
 	log     *zap.Logger
-	tg      *telegram.Telegram
+	tg      *tg.Telegram
 	gpt     *gpt.ChatGPT
 }
 
 func NewWafflerService(storage storage.WafflerStorager, components *component.Components) *WafflerService {
-	return &WafflerService{storage: storage, log: components.Logger}
+	return &WafflerService{storage: storage, log: components.Logger,
+		gpt: components.Gpt, tg: components.Tg}
 }
 
-func (s *WafflerService) Search(search *models.Search) {
-	s.log.Info("search", zap.String("search", search.Query))
+func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
+	scoreResponse := &message.ScoreResponse{
+		Cursor: request.Cursor,
+	}
 
-	s.tg.ParseChat(search.Query, 10) // TODO: search.Limit
+	records, err := u.storage.SelectRecords(request.SourceId)
+	if err != nil {
+		return nil, err
+	}
+	scoreResponse.Records = records
 
-	//s.gpt.AnswerForGPT(string())
+	return scoreResponse, nil
+}
+func (u *WafflerService) InfoSource(domain string) *message.InfoRequest {
+	res := &message.InfoRequest{}
+	switch domain {
 
-	//service.AnswerForGPT(s.log, search)
-	return
+	case "t.me":
+		res.Name = "Telegram"
+		res.Type = models.Telegram
+		return res
+	}
+	return nil
+}
+
+func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
+	recordsOfSource, err := s.tg.ParseChat(search.SourceURL, 10) // TODO: search.Limit
+	if err != nil {
+		s.log.Error("search", zap.Error(err))
+	}
+	newRecords := []models.Record{}
+
+	for i, r := range recordsOfSource.Records {
+		if r.RecordText == "" {
+			continue
+		}
+
+		recordsOfSource.Records[i].Score, err = s.gpt.ConstructQuestionGPT(r.RecordText, search.ScoreType)
+		if err != nil {
+			s.log.Error("error: question gpt", zap.Error(err))
+		}
+		newRecords = append(newRecords, recordsOfSource.Records[i])
+	}
+
+	recordsOfSource.Records = newRecords
+
+	err = s.storage.Create(recordsOfSource)
+	if err != nil {
+		s.log.Error("error: create", zap.Error(err))
+	}
+
+	return err
+}
+
+func (s *WafflerService) Search(search *models.Search) (*message.SearchResponse, error) {
+	source, err := s.storage.SearchBySourceName(search)
+	if err != nil {
+		s.log.Error("error: search", zap.Error(err))
+		return nil, err
+	}
+
+	return &message.SearchResponse{
+		Sources: source,
+		Cursor:  search.Cursor,
+	}, nil
 }

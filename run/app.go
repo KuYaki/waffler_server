@@ -8,6 +8,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/db"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/server"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/modules"
@@ -125,7 +126,10 @@ func (a *App) Bootstrap() Runner {
 	// инициализация хешера
 	hash := cryptography.NewHash(uuID)
 
-	components := component.NewComponents(a.conf, tokenManager, responseManager, decoder, hash, tg, a.logger)
+	chatGPT := gpt.NewChatGPT(a.conf.ChatGPT.Token)
+
+	components := component.NewComponents(a.conf, tokenManager, responseManager, decoder,
+		hash, tg, a.logger, chatGPT)
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
 	// init router

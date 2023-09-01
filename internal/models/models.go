@@ -1,17 +1,19 @@
 package models
 
 type User struct {
-	ID       int    `json:"id,omitempty"`
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-	TokenGPT string `json:"token_gpt,omitempty"`
+	ID          int    `json:"id,omitempty"`
+	Username    string `json:"username,omitempty"`
+	Password    string `json:"password,omitempty"`
+	ParserToken string `json:"token_gpt,omitempty"`
+	ParserType  string `json:"parser_type,omitempty"`
+	Locale      string `json:"locale,omitempty"`
 }
 
 type Search struct {
-	Query  string `json:"query"`
-	Limit  int    `json:"limit"`
-	Cursor string `json:"cursor"`
-	Order  string `json:"order"`
+	QueryForName string `json:"query"`
+	Limit        int    `json:"limit"`
+	Cursor       int    `json:"cursor"`
+	Order        string `json:"order"`
 }
 
 type SourceParse struct {
