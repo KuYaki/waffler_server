@@ -7,16 +7,16 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/auth/service"
-	"github.com/gin-gonic/gin"
+	"github.com/go-faster/errors"
 	"github.com/ptflp/godecoder"
 
 	"net/http"
 )
 
 type Auther interface {
-	Register(c *gin.Context)
-	Login(c *gin.Context)
-	Refresh(c *gin.Context)
+	Register(w http.ResponseWriter, r *http.Request)
+	Login(w http.ResponseWriter, r *http.Request)
+	Refresh(w http.ResponseWriter, r *http.Request)
 }
 
 type Auth struct {
@@ -29,36 +29,37 @@ func NewAuth(service service.Auther, components *component.Components) Auther {
 	return &Auth{auth: service, Responder: components.Responder, Decoder: components.Decoder}
 }
 
-func (a *Auth) Register(c *gin.Context) {
+func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
-	if err := c.BindJSON(&req); err != nil {
+	err := a.Decoder.Decode(r.Body, &req)
+	if err != nil {
+		a.ErrorBadRequest(w, err)
 		return
 	}
 
 	if req.Password != req.RetypePassword {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{
-			"error": "passwords don't match",
-		})
-
+		a.Responder.ErrorBadRequest(w, errors.New("passwords do not match"))
 		return
 	}
 
-	err := a.auth.Register(context.Background(), req.Username, req.Password)
+	err = a.auth.Register(context.Background(), req.Username, req.Password)
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, err)
+		a.ErrorInternal(w, err)
 		return
 	}
 
-	c.Writer.WriteHeader(http.StatusOK)
+	a.Responder.OutputJSON(w, nil)
 }
 
-func (a *Auth) Login(c *gin.Context) {
+func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	if err := c.BindJSON(&req); err != nil {
+	err := a.Decoder.Decode(r.Body, &req)
+	if err != nil {
+		a.ErrorBadRequest(w, err)
 		return
 	}
 	if req.Username == "" || req.Password == "" {
-		c.Writer.WriteHeader(http.StatusBadRequest)
+		a.Responder.ErrorBadRequest(w, errors.New("username and password are required"))
 		return
 	}
 
@@ -67,29 +68,29 @@ func (a *Auth) Login(c *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, err)
+		a.Responder.ErrorForbidden(w, err)
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, LoginData{
+	a.Responder.OutputJSON(w, LoginData{
 		AccessToken:  out.AccessToken,
 		RefreshToken: out.RefreshToken,
 	})
 }
 
-func (a *Auth) Refresh(c *gin.Context) {
-	claims, err := handler.ExtractUser(c.Request)
+func (a *Auth) Refresh(w http.ResponseWriter, r *http.Request) {
+	claims, err := handler.ExtractUser(r)
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, err)
+		a.Responder.ErrorBadRequest(w, err)
 		return
 	}
 	out, err := a.auth.AuthorizeRefresh(context.Background(), claims.ID)
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, err)
+		a.Responder.ErrorBadRequest(w, err)
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, LoginData{
+	a.Responder.OutputJSON(w, LoginData{
 		AccessToken:  out.AccessToken,
 		RefreshToken: out.RefreshToken,
 	})

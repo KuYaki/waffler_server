@@ -1,10 +1,12 @@
-package midlleware
+package middleware
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
-	"github.com/gin-gonic/gin"
+
 	"net/http"
 	"strings"
 )
@@ -25,80 +27,78 @@ func NewTokenManager(responder responder.Responder, jwt cryptography.TokenManage
 	}
 }
 
-func (t *Token) CheckStrictFunc(c *gin.Context) {
-	tokenRaw := c.GetHeader(authorization)
+func (t *Token) CheckStrictFunc(w http.ResponseWriter, r *http.Request) {
+	tokenRaw := r.Header.Get(authorization)
 	tokenParts := strings.Split(tokenRaw, " ")
 	if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
-		c.IndentedJSON(http.StatusForbidden, "wrong input data")
+		t.ErrorForbidden(w, fmt.Errorf("wrong input data"))
 		return
 	}
 	_, err := t.jwt.ParseToken(tokenParts[1], cryptography.AccessToken)
 	if err != nil && err.Error() == "Token is expired" {
-		c.IndentedJSON(http.StatusUnauthorized, "token expired")
+		t.ErrorUnauthorized(w, errors.New("token expired"))
 		return
 	}
 	if err != nil {
-		c.IndentedJSON(http.StatusForbidden, err)
+		t.ErrorForbidden(w, err)
 		return
 	}
 
-	c.Writer.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
-func (t *Token) CheckStrict() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tokenRaw := c.GetHeader(authorization)
+func (t *Token) CheckStrict(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenRaw := r.Header.Get(authorization)
 		tokenParts := strings.Split(tokenRaw, " ")
 		if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
-			c.IndentedJSON(http.StatusForbidden, "wrong input data")
+			t.ErrorForbidden(w, fmt.Errorf("wrong input data"))
 			return
 		}
 		u, err := t.jwt.ParseToken(tokenParts[1], cryptography.AccessToken)
 		if err != nil && err.Error() == "Token is expired" {
-			c.IndentedJSON(http.StatusUnauthorized, "token expired")
+			t.ErrorUnauthorized(w, errors.New("token expired"))
 			return
 		}
 		if err != nil {
-			c.IndentedJSON(http.StatusForbidden, err)
+			t.ErrorForbidden(w, err)
 			return
 		}
-
-		ctx := context.WithValue(c.Request.Context(), UserRequest{}, u)
-		c.Request.WithContext(ctx)
-		c.Next()
-	}
+		ctx := context.WithValue(r.Context(), UserRequest{}, u)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
-func (t *Token) CheckRefresh() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tokenRaw := c.GetHeader(authorization)
+func (t *Token) CheckRefresh(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenRaw := r.Header.Get(authorization)
 		tokenParts := strings.Split(tokenRaw, " ")
 		if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
-			c.IndentedJSON(http.StatusForbidden, "wrong input data")
+			t.ErrorForbidden(w, fmt.Errorf("wrong input data"))
 			return
 		}
 		u, err := t.jwt.ParseToken(tokenParts[1], cryptography.RefreshToken)
 		if err != nil && err.Error() == "Token expired" {
-			c.IndentedJSON(http.StatusUnauthorized, "token expired")
+			t.ErrorUnauthorized(w, err)
 			return
 		}
 		if err != nil {
-			c.IndentedJSON(http.StatusForbidden, err)
+			t.ErrorForbidden(w, err)
 			return
 		}
-		ctx := context.WithValue(context.Background(), UserRequest{}, u)
-		c.Request.WithContext(ctx)
-	}
+		ctx := context.WithValue(r.Context(), UserRequest{}, u)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
-func (t *Token) Check() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		token := c.GetHeader(authorization)
+func (t *Token) Check(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get(authorization)
 		u, err := t.jwt.ParseToken(token, cryptography.AccessToken)
 		if err != nil {
 			u = cryptography.UserClaims{}
 		}
-		ctx := context.WithValue(context.Background(), UserRequest{}, u)
-		c.Request.WithContext(ctx)
-	}
+		ctx := context.WithValue(r.Context(), UserRequest{}, u)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

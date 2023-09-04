@@ -2,52 +2,49 @@ package router
 
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
+	midle "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/modules"
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"time"
 )
 
-func NewApiRouter(controllers *modules.Controllers, components *component.Components) *gin.Engine {
-	newR := gin.Default()
-	authCheck := midlleware.NewTokenManager(components.Responder, components.TokenManager)
+func NewApiRouter(controllers *modules.Controllers, components *component.Components) *chi.Mux {
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
-	newR.GET("/", controllers.Waffler.Hello)
+	r.Use(middleware.Timeout(60 * time.Second))
 
-	auth := newR.Group("/auth")
-	{
-		auth.POST("/register", controllers.Auth.Register)
-		auth.POST("/login", controllers.Auth.Login)
-		auth.Group("/refresh")
-		{
-			auth.Use(authCheck.CheckRefresh())
-			auth.POST("/", controllers.Auth.Refresh)
+	r.Get("/", controllers.Waffler.Hello)
+	authCheck := midle.NewTokenManager(components.Responder, components.TokenManager)
 
-		}
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/register", controllers.Auth.Register)
+		r.Post("/login", controllers.Auth.Login)
 
-	}
+		r.Route("/refresh", func(r chi.Router) {
+			r.Use(authCheck.CheckRefresh)
+			r.Post("/", controllers.Auth.Refresh)
+		})
 
-	user := newR.Group("/user")
-	{
-		userController := controllers.User
-		user.Use(authCheck.CheckStrict())
-		user.POST("/save", userController.Save)
-		user.POST("/info", userController.Info)
-		//r.Route("/profile", func(r chi.Router) {
-		//	r.Use(authCheck.CheckStrict)
-		//	r.Get("/", userController.Profile)
-		//	r.Post("/changed_password", userController.ChangePassword)
-		//})
-	}
+	})
+	r.Route("/user", func(r chi.Router) {
+		r.Use(authCheck.CheckStrict)
+		r.Get("/info", controllers.User.Info)
+		r.Post("/save", controllers.User.Save)
+	})
 
-	source := newR.Group("/source")
-	{
+	r.Route("/source", func(r chi.Router) {
 		sourceController := controllers.Waffler
-		source.Use(authCheck.CheckStrict())
-		source.POST("/search", sourceController.Search)
-		source.POST("/score", sourceController.Score)
-		source.POST("/info", sourceController.Info)
-		source.POST("/parse", sourceController.Parse)
-	}
+		r.Use(authCheck.CheckStrict)
+		r.Post("/search", sourceController.Search)
+		r.Post("/score", sourceController.Score)
+		r.Post("/info", sourceController.Info)
+		r.Post("/parse", sourceController.Parse)
+	})
 
-	return newR
+	return r
 }

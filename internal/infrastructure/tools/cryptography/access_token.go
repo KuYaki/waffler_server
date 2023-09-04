@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/KuYaki/waffler_server/config"
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"log"
 	"strconv"
@@ -20,7 +19,7 @@ const (
 type TokenManager interface {
 	CreateToken(userID string, ttl time.Duration, kind int) (string, error)
 	ParseToken(inputToken string, kind int) (UserClaims, error)
-	ParseTokenForHTTP(c *gin.Context) (*UserFromClaims, error)
+	ParseTokenForHTTP(w http.ResponseWriter, r *http.Request) (*UserFromClaims, error)
 }
 
 type TokenJWT struct {
@@ -104,7 +103,7 @@ func (o *TokenJWT) ParseToken(inputToken string, kind int) (UserClaims, error) {
 	}, nil
 }
 
-func (o *TokenJWT) ParseTokenForHTTP(c *gin.Context) (*UserFromClaims, error) {
+func (o *TokenJWT) ParseTokenForHTTP(w http.ResponseWriter, r *http.Request) (*UserFromClaims, error) {
 	res := &UserFromClaims{}
 
 	tokenRaw := c.GetHeader("Authorization")

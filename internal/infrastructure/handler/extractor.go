@@ -2,7 +2,7 @@ package handler
 
 import (
 	"errors"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
+	midle "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"net/http"
 	"strconv"
@@ -10,7 +10,7 @@ import (
 
 func ExtractUser(r *http.Request) (cryptography.UserFromClaims, error) {
 	ctx := r.Context()
-	u, ok := ctx.Value(midlleware.UserRequest{}).(cryptography.UserClaims)
+	u, ok := ctx.Value(midle.UserRequest{}).(cryptography.UserClaims)
 	if !ok {
 		return cryptography.UserFromClaims{}, errors.New("token extract user error")
 	}
