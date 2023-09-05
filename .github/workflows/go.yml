@@ -10,19 +10,26 @@ on:
     branches: [ "master" ]
 
 jobs:
-
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-
+    - uses: actions/setup-go@v4
+      with:
+        versin: 1.20
     - name: Set up Go
-      uses: actions/setup-go@v4
       with:
         go-version: '1.20'
+        cache: false
 
     - name: test_compilation
       run: go build -o test_compilation cmd/api/main.go
+    - name: test
+      run: go test -v ./...
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: v1.54
 
-#    - name: test
-#      run: go test -v ./...
+
+    
