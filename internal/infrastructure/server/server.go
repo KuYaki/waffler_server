@@ -14,12 +14,12 @@ type Server interface {
 }
 
 type HttpServer struct {
-	conf   config.Server
+	conf   *config.Server
 	logger *zap.Logger
 	srv    *http.Server
 }
 
-func NewHttpServer(conf config.Server, server *http.Server, logger *zap.Logger) Server {
+func NewHttpServer(conf *config.Server, server *http.Server, logger *zap.Logger) Server {
 	return &HttpServer{conf: conf, logger: logger, srv: server}
 }
 

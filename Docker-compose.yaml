@@ -1,0 +1,41 @@
+version: '3.9'
+services:
+  ratesapi:
+    container_name: ${APP_NAME}api
+    build:
+       context: .
+       dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - telegram-data:/var/lib/postgresql/data
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - 8080:8080
+    networks:
+      - skynet
+
+  db:
+    container_name: ${APP_NAME}db
+    image: postgres:14.4-alpine
+    restart: always
+    volumes:
+      - db-data:/root/telegram_sessions
+    env_file:
+      - .env
+    ports:
+      - ${HOST}:${DB_PORT}:${DB_PORT}
+    networks:
+      - skynet
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  telegram-data:
+  db-data:
+networks:
+  skynet:

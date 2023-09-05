@@ -4,10 +4,19 @@ import (
 	"context"
 	"fmt"
 	"github.com/KuYaki/waffler_server/config"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/db"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/server"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/KuYaki/waffler_server/internal/router"
-	"github.com/go-chi/chi/v5"
+	"github.com/KuYaki/waffler_server/internal/storages"
+	"github.com/gin-gonic/gin"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"net/http"
@@ -83,10 +92,49 @@ func (a *App) Run() int {
 
 // Bootstrap - init application
 func (a *App) Bootstrap() Runner {
-	controller := modules.NewControllers(a.logger)
+	conn, err := db.NewSqlDB(a.conf)
+	if err != nil {
+		a.logger.Fatal("app: db error", zap.Error(err))
+		return nil
+	}
+	err = db.CreateSchemeDB(conn)
+	if err != nil {
+		a.logger.Fatal("app: create db error", zap.Error(err))
+	}
+
+	tg, err := telegram.NewTelegram(a.conf.Telegram)
+	if err != nil {
+		a.logger.Fatal("app: tg error", zap.Error(err))
+		return nil
+	}
+
+	storagesDB := storages.NewStorages(conn)
+
+	// инициализация менеджера токенов
+	tokenManager := cryptography.NewTokenJWT(a.conf.Token)
+	// инициализация декодера
+	decoder := godecoder.NewDecoder(jsoniter.Config{
+		EscapeHTML:             true,
+		SortMapKeys:            true,
+		ValidateJsonRawMessage: true,
+		DisallowUnknownFields:  true,
+	})
+	// инициализация менеджера ответов сервера
+	responseManager := responder.NewResponder(decoder, a.logger)
+	// инициализация генератора uuid
+	uuID := cryptography.NewUUIDGenerator()
+	// инициализация хешера
+	hash := cryptography.NewHash(uuID)
+
+	chatGPT := gpt.NewChatGPT(a.conf.ChatGPT.Token)
+
+	components := component.NewComponents(a.conf, tokenManager, responseManager, decoder,
+		hash, tg, a.logger, chatGPT)
+	services := modules.NewServices(storagesDB, components)
+	controller := modules.NewControllers(services, components)
 	// init router
-	var r *chi.Mux
-	r = router.NewApiRouter(controller)
+	var r *gin.Engine
+	r = router.NewApiRouter(controller, components)
 	// server configuration
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", a.conf.Server.Port),
