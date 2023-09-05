@@ -14,7 +14,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/KuYaki/waffler_server/internal/router"
 	"github.com/KuYaki/waffler_server/internal/storages"
-	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
@@ -133,8 +132,7 @@ func (a *App) Bootstrap() Runner {
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
 	// init router
-	var r *gin.Engine
-	r = router.NewApiRouter(controller, components)
+	r := router.NewApiRouter(controller, components)
 	// server configuration
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", a.conf.Server.Port),

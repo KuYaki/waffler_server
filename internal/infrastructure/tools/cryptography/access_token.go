@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/golang-jwt/jwt/v4"
-	"log"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -19,7 +16,6 @@ const (
 type TokenManager interface {
 	CreateToken(userID string, ttl time.Duration, kind int) (string, error)
 	ParseToken(inputToken string, kind int) (UserClaims, error)
-	ParseTokenForHTTP(w http.ResponseWriter, r *http.Request) (*UserFromClaims, error)
 }
 
 type TokenJWT struct {
@@ -101,27 +97,4 @@ func (o *TokenJWT) ParseToken(inputToken string, kind int) (UserClaims, error) {
 		ID:               claims["uid"].(string),
 		RegisteredClaims: jwt.RegisteredClaims{},
 	}, nil
-}
-
-func (o *TokenJWT) ParseTokenForHTTP(w http.ResponseWriter, r *http.Request) (*UserFromClaims, error) {
-	res := &UserFromClaims{}
-
-	tokenRaw := c.GetHeader("Authorization")
-	log.Println(tokenRaw)
-	tokenParts := strings.Split(tokenRaw, " ")
-	if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
-		return nil, errors.New("wrong input data")
-	}
-	u, err := o.ParseToken(tokenParts[1], AccessToken)
-	if err != nil && err.Error() == "Token is expired" {
-		return nil, err
-	}
-
-	idSting, err := strconv.Atoi(u.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	res.ID = idSting
-	return res, nil
 }
