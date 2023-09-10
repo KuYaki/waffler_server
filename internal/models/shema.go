@@ -5,14 +5,10 @@ import (
 	"time"
 )
 
-func (d *UserDTO) GetShemaName() string {
-	return "users"
-}
-
 const Telegram = iota
 
 type UserDTO struct {
-	ID          int            `json:"id"`
+	ID          int            `json:"id" gorm:"primaryKey"`
 	Username    string         `json:"username,omitempty"`
 	Hash        string         `json:"password,omitempty"`
 	ParserToken sql.NullString `json:"token_parser,omitempty"`
@@ -20,19 +16,18 @@ type UserDTO struct {
 	Locale      sql.NullString `json:"locale,omitempty"`
 }
 
-type Source struct {
+type SourceDTO struct {
 	ID           int    `json:"id,omitempty"`
 	Name         string `json:"name"`
 	SourceType   int    `json:"source_type"`
 	SourceUrl    string `json:"source_url"`
 	WafflerScore int    `json:"waffler_score"`
-	Records      []Record
 }
 
-type Record struct {
+type RecordDTO struct {
 	ID         int       `json:"id,omitempty"`
 	RecordText string    `json:"record_text"`
 	Score      int       `json:"score"`
 	CreatedAt  time.Time `json:"timestamp"`
-	RecordID   int       `json:"source_id,omitempty"`
+	SourceID   int       `json:"source_id,omitempty"`
 }

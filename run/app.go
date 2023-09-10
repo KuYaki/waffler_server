@@ -11,6 +11,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
+	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/KuYaki/waffler_server/internal/router"
 	"github.com/KuYaki/waffler_server/internal/storages"
@@ -96,11 +97,15 @@ func (a *App) Bootstrap() Runner {
 		a.logger.Fatal("app: db error", zap.Error(err))
 		return nil
 	}
-	err = db.CreateSchemeDB(conn)
+	err = conn.AutoMigrate(
+		&models.UserDTO{},
+		&models.SourceDTO{},
+		&models.RecordDTO{},
+	)
 	if err != nil {
-		a.logger.Fatal("app: create db error", zap.Error(err))
+		a.logger.Fatal("app: db migration error", zap.Error(err))
+		return nil
 	}
-
 	tg, err := telegram.NewTelegram(a.conf.Telegram)
 	if err != nil {
 		a.logger.Fatal("app: tg error", zap.Error(err))

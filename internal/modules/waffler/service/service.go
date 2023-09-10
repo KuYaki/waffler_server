@@ -55,27 +55,27 @@ func (u *WafflerService) InfoSource(domain string) *message.InfoRequest {
 }
 
 func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
-	recordsOfSource, err := s.tg.ParseChat(search.SourceURL, 10) // TODO: search.Limit
+	dataTelegram, err := s.tg.ParseChat(search.SourceURL, 10) // TODO: search.Limit
 	if err != nil {
 		s.log.Error("search", zap.Error(err))
 	}
-	newRecords := []models.Record{}
+	newRecords := []models.RecordDTO{}
 
-	for i, r := range recordsOfSource.Records {
+	for i, r := range dataTelegram.Records {
 		if r.RecordText == "" {
 			continue
 		}
 
-		recordsOfSource.Records[i].Score, err = s.gpt.ConstructQuestionGPT(r.RecordText, search.ScoreType)
+		dataTelegram.Records[i].Score, err = s.gpt.ConstructQuestionGPT(r.RecordText, search.ScoreType)
 		if err != nil {
 			s.log.Error("error: question gpt", zap.Error(err))
 		}
-		newRecords = append(newRecords, recordsOfSource.Records[i])
+		newRecords = append(newRecords, dataTelegram.Records[i])
 	}
 
-	recordsOfSource.Records = newRecords
+	dataTelegram.Records = newRecords
 
-	err = s.storage.Create(recordsOfSource)
+	err = s.storage.CreateSource(&dataTelegram.Source)
 	if err != nil {
 		s.log.Error("error: create", zap.Error(err))
 	}
