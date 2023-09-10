@@ -1,17 +1,15 @@
-version: '3.3'
+version: '3.9'
 services:
   ratesapi:
     container_name: ${APP_NAME}api
-    build:
-       context: .
-       dockerfile: Dockerfile
+    image: yaric011/waffler_server:latest
     restart: always
     volumes:
       - telegram-data:/var/lib/postgresql/data
+      - .env:/root/.env
     depends_on:
       - db
-    env_file:
-      - .env
+
     ports:
       - 8080:8080
     networks:
