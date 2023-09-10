@@ -48,7 +48,19 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Responder.OutputJSON(w, nil)
+	out, err := a.auth.Login(context.Background(), models.User{
+		Username: req.Username,
+		Password: req.Password,
+	})
+	if err != nil {
+		a.Responder.ErrorInternal(w, err)
+		return
+	}
+
+	a.Responder.OutputJSON(w, LoginData{
+		AccessToken:  out.AccessToken,
+		RefreshToken: out.RefreshToken,
+	})
 }
 
 func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +80,7 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
-		a.Responder.ErrorForbidden(w, err)
+		a.Responder.ErrorInternal(w, err)
 		return
 	}
 
