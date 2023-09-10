@@ -6,6 +6,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"time"
 )
 
@@ -14,6 +15,7 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
+	r.Use(cors.AllowAll().Handler)
 	r.Use(middleware.Recoverer)
 
 	r.Use(middleware.Timeout(60 * time.Second))
