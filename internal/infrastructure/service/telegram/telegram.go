@@ -111,7 +111,6 @@ func (t *Telegram) ParseChat(query string, limit int) (*DataTelegram, error) {
 				models.RecordDTO{
 					RecordText: message.Message,
 					CreatedAt:  time.Unix(int64(message.Date), 0),
-					SourceID:   message.ID,
 				})
 		case *tg2.MessageService: // messageService#2b085862
 		default:

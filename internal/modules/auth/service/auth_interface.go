@@ -6,7 +6,7 @@ import (
 )
 
 type Auther interface {
-	Register(ctx context.Context, username, password string) error
+	Register(ctx context.Context, username, password string) (int, error)
 	Login(ctx context.Context, user models.User) (*AuthorizeOut, error)
 	AuthorizeRefresh(ctx context.Context, idUser int) (*AuthorizeOut, error)
 }

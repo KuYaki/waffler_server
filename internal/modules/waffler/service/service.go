@@ -38,7 +38,14 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 	if err != nil {
 		return nil, err
 	}
-	scoreResponse.Records = records
+	for i := scoreResponse.Cursor; i < len(records) && i < request.Limit+scoreResponse.Cursor+request.Limit; i++ {
+
+		scoreResponse.Records = append(scoreResponse.Records, message.Record{
+			RecordText: records[i].RecordText,
+			Score:      records[i].Score,
+			Timestamp:  records[i].CreatedAt,
+		})
+	}
 
 	return scoreResponse, nil
 }
@@ -75,9 +82,10 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 
 	dataTelegram.Records = newRecords
 
-	err = s.storage.CreateSource(&dataTelegram.Source)
+	err = s.storage.CreateSourceAndRecords(dataTelegram)
 	if err != nil {
 		s.log.Error("error: create", zap.Error(err))
+		return err
 	}
 
 	return err

@@ -6,7 +6,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/handler"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
-	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"github.com/ptflp/godecoder"
@@ -56,12 +55,7 @@ func (a *User) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = a.service.Update(context.Background(), models.User{
-		ID:          claims.ID,
-		ParserToken: userSave.Parser.Token,
-		ParserType:  userSave.Parser.Type,
-		Locale:      userSave.Locale,
-	})
+	err = a.service.Update(context.Background(), userSave, claims.ID)
 	if err != nil {
 		a.Responder.ErrorInternal(w, err)
 		return
