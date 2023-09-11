@@ -9,6 +9,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/models"
 	uservice "github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"go.uber.org/zap"
+	"net/http"
 	"strconv"
 )
 
@@ -57,10 +58,19 @@ func (a *Auth) Login(ctx context.Context, user models.User) (*AuthorizeOut, erro
 	}, nil
 }
 
-func (a *Auth) Register(ctx context.Context, username, password string) error {
+func (a *Auth) Register(ctx context.Context, username, password string) (int, error) {
+	existUser, err := a.user.ExistsUser(ctx, username)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	if existUser {
+		return http.StatusConflict, errors.New("user already exists")
+	}
+
 	hashPass, err := cryptography.HashPassword(password)
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 	dto := models.User{
 		Username: username,
@@ -69,10 +79,10 @@ func (a *Auth) Register(ctx context.Context, username, password string) error {
 
 	err = a.user.Create(ctx, dto)
 	if err != nil {
-		return err
+		return http.StatusInternalServerError, err
 	}
 
-	return nil
+	return http.StatusOK, nil
 }
 
 func (a *Auth) AuthorizeRefresh(ctx context.Context, idUser int) (*AuthorizeOut, error) {

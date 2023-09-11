@@ -11,10 +11,11 @@ import (
 
 type Userer interface {
 	Create(ctx context.Context, user models.User) error
-	Update(ctx context.Context, user models.User) error
+	Update(ctx context.Context, user message.UserInfo, idUser int) error
 	GetByLogin(ctx context.Context, username string) (*models.UserDTO, error)
 	GetByID(ctx context.Context, id int) (*models.User, error)
 	GetUserInfo(ctx context.Context, id int) (*message.UserInfo, error)
+	ExistsUser(ctx context.Context, username string) (bool, error)
 }
 
 type UserService struct {
@@ -31,10 +32,10 @@ func (u *UserService) GetUserInfo(ctx context.Context, id int) (*message.UserInf
 	}
 
 	userInfo.Parser = message.Parser{
-		Type:  user.ParserType.String,
+		Type:  message.ParserType(user.ParserType.String),
 		Token: user.ParserToken.String,
 	}
-	userInfo.Locale = user.Locale.String
+	userInfo.Locale = message.Locale(user.Locale.String)
 
 	return &userInfo, err
 
@@ -67,19 +68,13 @@ func (u *UserService) Create(ctx context.Context, user models.User) error {
 
 }
 
-func (u *UserService) Update(ctx context.Context, user models.User) error {
-	userDB, err := u.storage.GetByID(ctx, user.ID)
+func (u *UserService) Update(ctx context.Context, user message.UserInfo, idUser int) error {
+	userDB, err := newUserDTO(user)
 	if err != nil {
-		u.logger.Error("user: GetUserInfo err", zap.Error(err))
+		u.logger.Error("user: newUserDTO err", zap.Error(err))
 		return err
 	}
-
-	userDB.ParserToken.String = user.ParserToken
-	userDB.ParserToken.Valid = true
-	userDB.ParserType.String = user.ParserType
-	userDB.ParserType.Valid = true
-	userDB.Locale.String = user.Locale
-	userDB.Locale.Valid = true
+	userDB.ID = idUser
 
 	err = u.storage.Update(ctx, userDB)
 	if err != nil {
@@ -109,6 +104,16 @@ func (u *UserService) GetByID(ctx context.Context, id int) (*models.User, error)
 	return us, nil
 }
 
+func (u *UserService) ExistsUser(ctx context.Context, username string) (bool, error) {
+	user, err := u.storage.UserExists(ctx, username)
+	if err != nil {
+		u.logger.Error("user: GetByUsername err", zap.Error(err))
+		return user, err
+	}
+
+	return user, err
+}
+
 //func (u *UserService) GetUserInfo(ctx context.Context, id int) (*models.User, error) {
 //	user, err := u.storage.GetUserInfo(ctx, id)
 //	if err != nil {
@@ -127,3 +132,29 @@ func (u *UserService) GetByID(ctx context.Context, id int) (*models.User, error)
 //
 //	return us, nil
 //}
+
+func newUserDTO(user message.UserInfo) (*models.UserDTO, error) {
+	var err error
+	userDB := models.UserDTO{}
+	if user.Parser.Token != "" {
+		err = userDB.ParserToken.Scan(user.Parser.Token)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if user.Parser.Type != "" {
+		err = userDB.ParserType.Scan(user.Parser.Type)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if user.Locale != "" {
+		err = userDB.Locale.Scan(user.Locale)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &userDB, nil
+}

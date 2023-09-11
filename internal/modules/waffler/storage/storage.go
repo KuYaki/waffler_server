@@ -1,116 +1,96 @@
 package storage
 
 import (
-	"context"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/models"
-	"github.com/KuYaki/waffler_server/internal/modules/message"
-	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type WafflerStorager interface {
-	Create(*models.Source) error
-	SearchBySourceName(search *models.Search) ([]message.Source, error)
-	SelectRecords(idSource int) ([]message.Record, error)
+	CreateSource(*models.SourceDTO) error
+	SearchBySourceName(search *models.Search) ([]models.SourceDTO, error)
+	CreateSourceAndRecords(source *telegram.DataTelegram) error
+	SelectRecords(idSource int) ([]models.RecordDTO, error)
 }
 
-func NewWafflerStorage(conn *pgxpool.Pool) WafflerStorager {
+func NewWafflerStorage(conn *gorm.DB) WafflerStorager {
 	return &WafflerStorage{conn: conn}
 }
 
 type WafflerStorage struct {
-	conn *pgxpool.Pool
+	conn *gorm.DB
 }
 
-func (s WafflerStorage) Create(source *models.Source) error {
-	ctx := context.Background()
-	tx, err := s.conn.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	sqlSource, argsSource, err := sq.Insert("sources").PlaceholderFormat(sq.Dollar).
-		Columns("name", "source_type", "source_url", "waffel_score").
-		Values(source.Name, source.SourceType, source.SourceUrl, source.WafflerScore).ToSql()
-	if err != nil {
-		return err
-	}
+func (s WafflerStorage) CreateSourceAndRecords(source *telegram.DataTelegram) error {
+	tx := s.conn.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	_, err = tx.Exec(ctx, sqlSource, argsSource...)
-	if err != nil {
+	if err := tx.Error; err != nil {
 		return err
 	}
 
-	for _, record := range source.Records {
-		sqlRecord, argsRecord, err := sq.Insert("records").PlaceholderFormat(sq.Dollar).
-			Columns("source_id", "record_text", "score", "created_at").
-			Values(source.ID, record.RecordText, record.Score, record.CreatedAt).ToSql()
-
-		_, err = tx.Exec(ctx, sqlRecord, argsRecord...)
-		if err != nil {
-			return err
-		}
-
+	err := tx.Create(&source.Source).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	for i := range source.Records {
+		source.Records[i].SourceID = source.Source.ID
 	}
 
-	err = tx.Commit(ctx)
+	err = tx.Create(source.Records).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 
-	return err
+	err = tx.Commit().Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s WafflerStorage) SearchBySourceName(search *models.Search) ([]message.Source, error) {
-	ctx := context.Background()
-	sql, args, err := sq.Select("id", "name", "source_type", "source_url", "waffel_score").
-		PlaceholderFormat(sq.Dollar).
-		From("sources").Where(sq.Like{"name": "%" + search.QueryForName + "%"}).ToSql()
+func (s WafflerStorage) CreateSource(source *models.SourceDTO) error {
+	err := s.conn.Create(source).Error
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	rows, err := s.conn.Query(ctx, sql, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var res []message.Source
-	for rows.Next() {
-		var searchResponse message.Source
-		err := rows.Scan(&searchResponse.ID, &searchResponse.Name,
-			&searchResponse.SourceType, &searchResponse.SourceUrl, &searchResponse.WafflerScore)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, searchResponse)
-	}
-
-	return res, nil
+	return nil
 }
 
-func (s WafflerStorage) SelectRecords(idSource int) ([]message.Record, error) {
-	ctx := context.Background()
-	sql, args, err := sq.Select("record_text", "score", "created_at").
-		PlaceholderFormat(sq.Dollar).
-		From("records").Where(sq.Eq{"source_id": idSource}).ToSql()
+func (s WafflerStorage) CreateRecords(source []models.RecordDTO) error {
+	err := s.conn.Create(source).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s WafflerStorage) SearchBySourceName(search *models.Search) ([]models.SourceDTO, error) {
+	sources := []models.SourceDTO{}
+
+	err := s.conn.Where("name LIKE ?", "%"+search.QueryForName+"%").Find(&sources).Error
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := s.conn.Query(ctx, sql, args...)
+	return sources, nil
+}
+
+func (s WafflerStorage) SelectRecords(idSource int) ([]models.RecordDTO, error) {
+	records := []models.RecordDTO{}
+	err := s.conn.Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var res []message.Record
-	for rows.Next() {
-		var searchResponse message.Record
-		err := rows.Scan(&searchResponse.RecordText,
-			&searchResponse.Score, &searchResponse.Timestamp)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, searchResponse)
-	}
-
-	return res, nil
+	return records, nil
 }

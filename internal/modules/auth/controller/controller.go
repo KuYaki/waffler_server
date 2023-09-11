@@ -42,9 +42,9 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = a.auth.Register(context.Background(), req.Username, req.Password)
+	statusCode, err := a.auth.Register(context.Background(), req.Username, req.Password)
 	if err != nil {
-		a.ErrorInternal(w, err)
+		a.Error(w, statusCode, err)
 		return
 	}
 

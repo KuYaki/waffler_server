@@ -41,7 +41,6 @@ func NewTelegram(conf *config.Telegram) (*Telegram, error) {
 		return nil, err
 	}
 	tg := client.API()
-
 	return &Telegram{
 		Client: tg,
 	}, nil
@@ -63,7 +62,7 @@ type MessageData struct {
 	TimeMessage time.Time
 }
 
-func (t *Telegram) ParseChat(query string, limit int) (*models.Source, error) {
+func (t *Telegram) ParseChat(query string, limit int) (*DataTelegram, error) {
 	f, err := t.Client.ContactsSearch(context.Background(), &tg2.ContactsSearchRequest{
 		Q:     query,
 		Limit: limit,
@@ -94,22 +93,24 @@ func (t *Telegram) ParseChat(query string, limit int) (*models.Source, error) {
 	}
 	res := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
 
-	ress := &models.Source{
-		Name:       channel.Username + " " + "@" + channel.Title,
-		SourceType: models.Telegram,
-		SourceUrl:  query,
-		Records:    make([]models.Record, 0, limit),
+	dataTg := &DataTelegram{
+		models.SourceDTO{
+			Name:       channel.Username + " " + "@" + channel.Title,
+			SourceType: models.Telegram,
+			SourceUrl:  query,
+		},
+		make([]models.RecordDTO, 0, limit),
 	}
+
 	for _, mesRaw := range res.Messages {
 		switch v := mesRaw.(type) {
 		case *tg2.MessageEmpty: // messageEmpty#90a6ca84
 		case *tg2.Message: // message#38116ee0
 			message := mesRaw.(*tg2.Message)
-			ress.Records = append(ress.Records,
-				models.Record{
+			dataTg.Records = append(dataTg.Records,
+				models.RecordDTO{
 					RecordText: message.Message,
 					CreatedAt:  time.Unix(int64(message.Date), 0),
-					RecordID:   message.ID,
 				})
 		case *tg2.MessageService: // messageService#2b085862
 		default:
@@ -118,5 +119,10 @@ func (t *Telegram) ParseChat(query string, limit int) (*models.Source, error) {
 
 	}
 
-	return ress, nil
+	return dataTg, nil
+}
+
+type DataTelegram struct {
+	Source  models.SourceDTO
+	Records []models.RecordDTO
 }
