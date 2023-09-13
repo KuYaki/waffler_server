@@ -5,8 +5,8 @@ services:
     image: yaric011/waffler_server:latest
     restart: always
     volumes:
-      - telegram-data:/var/lib/postgresql/data
-      - .env:/root/.env
+      - ./.env:/root/.env
+      - ./telegram_sessions:/root/telegram_sessions
     depends_on:
       - db
 
@@ -20,7 +20,7 @@ services:
     image: postgres:14.4-alpine
     restart: always
     volumes:
-      - db-data:/root/telegram_sessions
+      - db-data:/root/telegram
     env_file:
       - .env
     ports:
@@ -33,7 +33,6 @@ services:
         max-file: "3"
 
 volumes:
-  telegram-data:
   db-data:
 networks:
   skynet:
