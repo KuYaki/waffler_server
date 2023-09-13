@@ -21,12 +21,10 @@ type WafflerService struct {
 	storage storage.WafflerStorager
 	log     *zap.Logger
 	tg      *tg.Telegram
-	gpt     *gpt.ChatGPT
 }
 
 func NewWafflerService(storage storage.WafflerStorager, components *component.Components) *WafflerService {
-	return &WafflerService{storage: storage, log: components.Logger,
-		gpt: components.Gpt, tg: components.Tg}
+	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg}
 }
 
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
@@ -67,13 +65,14 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 		s.log.Error("search", zap.Error(err))
 	}
 	newRecords := []models.RecordDTO{}
+	chatGPT := gpt.NewChatGPT(search.Parser.Token)
 
 	for i, r := range dataTelegram.Records {
 		if r.RecordText == "" {
 			continue
 		}
 
-		dataTelegram.Records[i].Score, err = s.gpt.ConstructQuestionGPT(r.RecordText, search.ScoreType)
+		dataTelegram.Records[i].Score, err = chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
 		if err != nil {
 			s.log.Error("error: question gpt", zap.Error(err))
 		}

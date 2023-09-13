@@ -41,9 +41,8 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 
 	r.Route("/source", func(r chi.Router) {
 		sourceController := controllers.Waffler
-		r.Use(authCheck.CheckStrict)
-		r.Post("/parse", sourceController.Parse)
 		r.Post("/search", sourceController.Search)
+		r.Post("/parse", sourceController.Parse)
 		r.Post("/score", sourceController.Score)
 		r.Post("/info", sourceController.Info)
 	})
