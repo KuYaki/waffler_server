@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
+	"strconv"
 
 	"net/http"
 	"strings"
@@ -101,4 +102,29 @@ func (t *Token) Check(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), UserRequest{}, u)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (t *Token) ExtractUserFormRequest(r *http.Request) (*cryptography.UserFromClaims, error) {
+	tokenRaw := r.Header.Get(authorization)
+	tokenParts := strings.Split(tokenRaw, " ")
+	if len(tokenParts) < 2 && tokenParts[0] != "Bearer" {
+		return nil, fmt.Errorf("wrong input data")
+	}
+	u, err := t.jwt.ParseToken(tokenParts[1], cryptography.AccessToken)
+	if err != nil && err.Error() == "Token is expired" {
+		return nil, errors.New("token expired")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	userID, err := strconv.Atoi(u.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cryptography.UserFromClaims{
+		ID: userID,
+	}, nil
+
 }

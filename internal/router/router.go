@@ -2,7 +2,6 @@ package router
 
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
-	midle "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -21,7 +20,7 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Get("/", controllers.Waffler.Hello)
-	authCheck := midle.NewTokenManager(components.Responder, components.TokenManager)
+	authCheck := components.Token
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", controllers.Auth.Register)

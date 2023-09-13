@@ -1,10 +1,13 @@
 package controller
 
 import (
+	"context"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
+	middleware "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
+	service2 "github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
 
 	"github.com/ptflp/godecoder"
@@ -22,15 +25,17 @@ type Waffler interface {
 }
 
 type Waffl struct {
-	service service.Waffler
-	log     *zap.Logger
+	service     service.Waffler
+	log         *zap.Logger
+	token       *middleware.Token
+	userService service2.Userer
 	responder.Responder
 	godecoder.Decoder
 }
 
-func NewWaffl(service service.Waffler, components *component.Components) Waffler {
+func NewWaffl(service service.Waffler, user service2.Userer, components *component.Components) Waffler {
 	return &Waffl{service: service,
-		log: components.Logger, Responder: components.Responder, Decoder: components.Decoder}
+		log: components.Logger, token: components.Token, userService: user, Responder: components.Responder, Decoder: components.Decoder}
 }
 
 func (wa *Waffl) Search(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +99,24 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		wa.ErrorBadRequest(w, err)
 		return
+	}
+
+	if Parser.Parser.Token == "" {
+		claims, err := wa.token.ExtractUserFormRequest(r)
+		if err != nil {
+			wa.ErrorUnauthorized(w, err)
+			return
+		}
+		user, err := wa.userService.GetByID(context.Background(), claims.ID)
+		if err != nil {
+			wa.ErrorBadRequest(w, err)
+			return
+		}
+		if user.ParserToken != "" && user.ParserType != "" {
+
+		}
+		Parser.Parser.Token = user.ParserToken
+		Parser.Parser.Type = user.ParserType
 	}
 
 	err = wa.service.ParseSource(Parser)

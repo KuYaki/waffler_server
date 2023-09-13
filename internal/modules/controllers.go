@@ -15,7 +15,7 @@ type Controllers struct {
 
 func NewControllers(services *Services, components *component.Components) *Controllers {
 	authController := acontroller.NewAuth(services.Auth, components)
-	wafflController := wacontroller.NewWaffl(services.WafflService, components)
+	wafflController := wacontroller.NewWaffl(services.WafflService, services.User, components)
 	userController := ucontroller.NewUserController(services.User, components)
 
 	return &Controllers{

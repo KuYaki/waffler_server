@@ -6,6 +6,7 @@ import (
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/db"
+	midle "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/server"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
@@ -129,7 +130,9 @@ func (a *App) Bootstrap() Runner {
 	// инициализация хешера
 	hash := cryptography.NewHash(uuID)
 
-	components := component.NewComponents(a.conf, tokenManager, responseManager, decoder,
+	token := midle.NewTokenManager(responseManager, tokenManager)
+
+	components := component.NewComponents(a.conf, tokenManager, token, responseManager, decoder,
 		hash, tg, a.logger)
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/handler"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
@@ -42,6 +43,35 @@ func (a *User) Info(w http.ResponseWriter, r *http.Request) {
 	a.Responder.OutputJSON(w, userInfo)
 }
 
+var locale = []string{
+	"RU", "EN",
+}
+
+var parser = []string{
+	"GPT",
+}
+
+func validate(user message.UserInfo) bool {
+	var successLocale bool
+	for _, l := range locale {
+		if user.Locale == l {
+			successLocale = true
+			break
+		}
+	}
+
+	var successParser bool
+	for _, p := range parser {
+		if user.Parser.Type == p {
+			successParser = true
+			break
+		}
+	}
+
+	return successLocale && successParser
+
+}
+
 func (a *User) Save(w http.ResponseWriter, r *http.Request) {
 	claims, err := handler.ExtractUser(r)
 	if err != nil {
@@ -52,6 +82,11 @@ func (a *User) Save(w http.ResponseWriter, r *http.Request) {
 	err = a.Decoder.Decode(r.Body, &userSave)
 	if err != nil {
 		a.ErrorBadRequest(w, err)
+		return
+	}
+
+	if !validate(userSave) {
+		a.Responder.ErrorBadRequest(w, errors.New("invalid locale or parser"))
 		return
 	}
 

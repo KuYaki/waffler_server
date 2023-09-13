@@ -32,10 +32,10 @@ func (u *UserService) GetUserInfo(ctx context.Context, id int) (*message.UserInf
 	}
 
 	userInfo.Parser = message.Parser{
-		Type:  message.ParserType(user.ParserType.String),
+		Type:  user.ParserType.String,
 		Token: user.ParserToken.String,
 	}
-	userInfo.Locale = message.Locale(user.Locale.String)
+	userInfo.Locale = user.Locale.String
 
 	return &userInfo, err
 
@@ -69,6 +69,7 @@ func (u *UserService) Create(ctx context.Context, user models.User) error {
 }
 
 func (u *UserService) Update(ctx context.Context, user message.UserInfo, idUser int) error {
+
 	userDB, err := newUserDTO(user)
 	if err != nil {
 		u.logger.Error("user: newUserDTO err", zap.Error(err))
@@ -88,7 +89,7 @@ func (u *UserService) Update(ctx context.Context, user message.UserInfo, idUser 
 func (u *UserService) GetByID(ctx context.Context, id int) (*models.User, error) {
 	user, err := u.storage.GetByID(ctx, id)
 	if err != nil {
-		u.logger.Error("user: GetByEmail err", zap.Error(err))
+		u.logger.Error("user: GetByID err", zap.Error(err))
 		return nil, err
 	}
 

@@ -3,67 +3,20 @@ package message
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/models"
-	"github.com/go-faster/errors"
-	"github.com/goccy/go-json"
 	"time"
 )
 
 type UserInfo struct {
 	Parser Parser `json:"parser,omitempty"`
-	Locale `json:"locale,omitempty"`
-}
-
-func (l *UserInfo) UnmarshalJSON(data []byte) error {
-	required := struct {
-		Parser struct {
-			TypePars string `json:"type,omitempty"`
-			Token    string `json:"token,omitempty"`
-		} `json:"parser,omitempty"`
-		Locale string `json:"locale,omitempty"`
-	}{}
-
-	err := json.Unmarshal(data, &required)
-	if err != nil {
-		return err
-	}
-	switch required.Parser.TypePars {
-	case "GPT":
-		l.Parser.Type = GPT
-	default:
-		return errors.New("unknown parser type")
-	}
-
-	l.Parser.Token = required.Parser.Token
-
-	switch required.Locale {
-	case "RU":
-		l.Locale = Russian
-	case "EN":
-		l.Locale = English
-	default:
-		return errors.New("unknown locale")
-	}
-
-	return nil
+	Locale string `json:"locale,omitempty"`
 }
 
 type Locale string
 
-const (
-	Russian Locale = "RU"
-	English Locale = "EN"
-)
-
 type Parser struct {
-	Type  ParserType `json:"type,omitempty"`
-	Token string     `json:"token,omitempty"`
+	Type  string `json:"type,omitempty"`
+	Token string `json:"token,omitempty"`
 }
-
-type ParserType string
-
-const (
-	GPT ParserType = "GPT"
-)
 
 type InfoRequest struct {
 	Name string `json:"name"`
