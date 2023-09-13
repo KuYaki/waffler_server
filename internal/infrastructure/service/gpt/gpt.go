@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/sashabaranov/go-openai"
+	"regexp"
 	"strconv"
-	"strings"
 )
 
 type ChatGPT struct {
@@ -50,13 +50,30 @@ func (g *ChatGPT) ConstructQuestionGPT(mess string, typeAnswer AnswerTypeGPT) (i
 }
 
 func parseAnswerGPT(answer string) (int, error) {
+	var scoreFloat = []string{"1.0", "0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0"}
+	var resRaw string
+	var find bool
+	for _, v := range scoreFloat {
+		re, err := regexp.Compile(string(v))
+		if err != nil {
+			return 0, err
+		}
+		res := re.MatchString(answer)
+		if res {
+			resRaw = v
+			find = true
+		}
+	}
+	if !find {
+		return 0, errors.New("error: unknown answer")
+	}
+
 	var result int
-	answer = strings.TrimSpace(answer)
-	scoreFloat, err := strconv.ParseFloat(answer, 64)
+	float, err := strconv.ParseFloat(resRaw, 64)
 	if err != nil {
 		return 0, err
 	}
-	switch scoreFloat {
+	switch float {
 	case 1.0:
 		result = 1
 	case 0.9:
