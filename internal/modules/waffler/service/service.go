@@ -46,6 +46,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 	}
 
 	scoreResponse.Records = scoreResponse.Records[scoreResponse.Cursor : scoreResponse.Cursor+request.Limit]
+	scoreResponse.Cursor += len(scoreResponse.Records)
 
 	return scoreResponse, nil
 }
@@ -100,9 +101,9 @@ func (s *WafflerService) Search(search *models.Search) (*message.SearchResponse,
 	}
 
 	sourceRes := source[search.Cursor : search.Cursor+search.Limit]
-
+	search.Cursor += len(sourceRes)
 	return &message.SearchResponse{
 		Sources: sourceRes,
-		Cursor:  search.Cursor + search.Limit,
+		Cursor:  search.Cursor,
 	}, nil
 }
