@@ -184,7 +184,7 @@
 
 ## User Auth
 
-**Путь**: POST /user/auth
+**Путь**: POST /user/login
 
 **Тело запроса**:
 
@@ -306,7 +306,7 @@
 
 **Коды ошибок**:
 
-- `401 Unauthorized`: Если `access_token` недействителен.
+- `401 Unauthorized`: Если `refresh_token` недействителен.
 - `500 Internal Server Error`: Если произошла внутренняя ошибка сервера.
 
 ## User Save

@@ -31,16 +31,16 @@ func NewAuthService(user uservice.Userer, components *component.Components) *Aut
 	}
 }
 
-func (a *Auth) Login(ctx context.Context, user models.User) (*AuthorizeOut, error) {
+func (a *Auth) Login(ctx context.Context, user models.User) (*AuthorizeOut, int, error) {
 	// 1. получаем юзера по username
 	userDb, err := a.user.GetByLogin(ctx, user.Username)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusUnauthorized, err
 	}
 	// 2. проверяем пароль
 	if !cryptography.CheckPassword(userDb.Hash, user.Password) {
 		a.logger.Error("user: CheckPassword err", zap.Error(err))
-		return nil, errors.New("wrong password")
+		return nil, http.StatusUnauthorized, errors.New("wrong password")
 	}
 	user.ID = userDb.ID
 
@@ -48,14 +48,14 @@ func (a *Auth) Login(ctx context.Context, user models.User) (*AuthorizeOut, erro
 	accessToken, refreshToken, err := a.generateTokens(&user)
 	if err != nil {
 		a.logger.Error("user: generateTokens err", zap.Error(err))
-		return nil, err
+		return nil, http.StatusBadRequest, err
 	}
 	// 4. возвращаем токены
 	return &AuthorizeOut{
 		UserID:       user.ID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-	}, nil
+	}, http.StatusOK, nil
 }
 
 func (a *Auth) Register(ctx context.Context, username, password string) (int, error) {

@@ -48,12 +48,12 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := a.auth.Login(context.Background(), models.User{
+	out, statusCode, err := a.auth.Login(context.Background(), models.User{
 		Username: req.Username,
 		Password: req.Password,
 	})
 	if err != nil {
-		a.Responder.ErrorInternal(w, err)
+		a.Responder.Error(w, statusCode, err)
 		return
 	}
 
@@ -75,12 +75,12 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := a.auth.Login(context.Background(), models.User{
+	out, statusCode, err := a.auth.Login(context.Background(), models.User{
 		Username: req.Username,
 		Password: req.Password,
 	})
 	if err != nil {
-		a.Responder.ErrorInternal(w, err)
+		a.Responder.Error(w, statusCode, err)
 		return
 	}
 

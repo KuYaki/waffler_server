@@ -30,7 +30,7 @@ func NewUserController(service service.Userer, components *component.Components)
 func (a *User) Info(w http.ResponseWriter, r *http.Request) {
 	claims, err := handler.ExtractUser(r)
 	if err != nil {
-		a.ErrorBadRequest(w, err)
+		a.ErrorInternal(w, err)
 		return
 	}
 	userInfo, err := a.service.GetUserInfo(context.Background(), claims.ID)
@@ -45,7 +45,7 @@ func (a *User) Info(w http.ResponseWriter, r *http.Request) {
 func (a *User) Save(w http.ResponseWriter, r *http.Request) {
 	claims, err := handler.ExtractUser(r)
 	if err != nil {
-		a.ErrorBadRequest(w, err)
+		a.ErrorInternal(w, err)
 		return
 	}
 	var userSave message.UserInfo

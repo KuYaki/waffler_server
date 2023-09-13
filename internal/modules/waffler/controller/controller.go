@@ -42,7 +42,7 @@ func (wa *Waffl) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	search, err := wa.service.Search(&data)
 	if err != nil {
-		wa.Responder.ErrorBadRequest(w, err)
+		wa.Responder.ErrorInternal(w, err)
 		return
 	}
 
@@ -98,7 +98,7 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 
 	err = wa.service.ParseSource(Parser)
 	if err != nil {
-		wa.Responder.ErrorBadRequest(w, err)
+		wa.Responder.ErrorInternal(w, err)
 		return
 	}
 
