@@ -6,7 +6,7 @@ import (
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
-	"github.com/KuYaki/waffler_server/internal/models"
+	"github.com/KuYaki/waffler_server/internal/modules/message"
 	uservice "github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"go.uber.org/zap"
 	"net/http"
@@ -31,7 +31,7 @@ func NewAuthService(user uservice.Userer, components *component.Components) *Aut
 	}
 }
 
-func (a *Auth) Login(ctx context.Context, user models.User) (*AuthorizeOut, int, error) {
+func (a *Auth) Login(ctx context.Context, user message.User) (*AuthorizeOut, int, error) {
 	// 1. получаем юзера по username
 	userDb, err := a.user.GetByLogin(ctx, user.Username)
 	if err != nil {
@@ -72,7 +72,7 @@ func (a *Auth) Register(ctx context.Context, username, password string) (int, er
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	dto := models.User{
+	dto := message.User{
 		Username: username,
 		Password: hashPass,
 	}
@@ -103,7 +103,7 @@ func (a *Auth) AuthorizeRefresh(ctx context.Context, idUser int) (*AuthorizeOut,
 	}, nil
 }
 
-func (a *Auth) generateTokens(user *models.User) (string, string, error) {
+func (a *Auth) generateTokens(user *message.User) (string, string, error) {
 	accessToken, err := a.tokenManager.CreateToken(
 		strconv.Itoa(user.ID),
 		a.conf.Token.AccessTTL,

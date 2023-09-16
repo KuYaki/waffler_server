@@ -10,10 +10,10 @@ import (
 )
 
 type Userer interface {
-	Create(ctx context.Context, user models.User) error
+	Create(ctx context.Context, user message.User) error
 	Update(ctx context.Context, user message.UserInfo, idUser int) error
 	GetByLogin(ctx context.Context, username string) (*models.UserDTO, error)
-	GetByID(ctx context.Context, id int) (*models.User, error)
+	GetByID(ctx context.Context, id int) (*message.User, error)
 	GetUserInfo(ctx context.Context, id int) (*message.UserInfo, error)
 	ExistsUser(ctx context.Context, username string) (bool, error)
 }
@@ -54,7 +54,7 @@ func NewUserService(storage storage.Userer, components *component.Components) *U
 	return &UserService{storage: storage, logger: components.Logger}
 }
 
-func (u *UserService) Create(ctx context.Context, user models.User) error {
+func (u *UserService) Create(ctx context.Context, user message.User) error {
 	us := &models.UserDTO{
 		Username: user.Username,
 		Hash:     user.Password,
@@ -86,14 +86,14 @@ func (u *UserService) Update(ctx context.Context, user message.UserInfo, idUser 
 	return nil
 }
 
-func (u *UserService) GetByID(ctx context.Context, id int) (*models.User, error) {
+func (u *UserService) GetByID(ctx context.Context, id int) (*message.User, error) {
 	user, err := u.storage.GetByID(ctx, id)
 	if err != nil {
 		u.logger.Error("user: GetByID err", zap.Error(err))
 		return nil, err
 	}
 
-	us := &models.User{
+	us := &message.User{
 		ID:          user.ID,
 		Username:    user.Username,
 		Password:    user.Hash,

@@ -19,8 +19,8 @@ type Parser struct {
 }
 
 type InfoRequest struct {
-	Name string `json:"name"`
-	Type int    `json:"type"`
+	Name string            `json:"name"`
+	Type models.SourceType `json:"type"`
 }
 
 type SourceURL struct {

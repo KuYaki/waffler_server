@@ -5,7 +5,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	middleware "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
-	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	service2 "github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
@@ -39,7 +38,7 @@ func NewWaffl(service service.Waffler, user service2.Userer, components *compone
 }
 
 func (wa *Waffl) Search(w http.ResponseWriter, r *http.Request) {
-	var data models.Search
+	var data message.Search
 	err := wa.Decoder.Decode(r.Body, &data)
 	if err != nil {
 		wa.ErrorBadRequest(w, err)

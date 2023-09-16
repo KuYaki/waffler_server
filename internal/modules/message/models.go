@@ -1,4 +1,6 @@
-package models
+package message
+
+import "github.com/KuYaki/waffler_server/internal/models"
 
 type User struct {
 	ID          int    `json:"id,omitempty"`
@@ -10,18 +12,16 @@ type User struct {
 }
 
 type Search struct {
-	QueryForName string `json:"query"`
-	Limit        int    `json:"limit"`
-	Cursor       int    `json:"cursor"`
-	Order        string `json:"order"`
+	QueryForName string              `json:"query"`
+	Limit        int                 `json:"limit"`
+	Cursor       int                 `json:"cursor"`
+	Order        string              `json:"order"`
+	SourceType   []models.SourceType `json:"source_type"`
+	ScoreType    []models.ScoreType  `json:"score_type"`
 }
 
 type SourceParse struct {
 	SourceURL string `json:"source_url"`
 	ScoreType string `json:"score_type"`
 	Parser    `json:"parser"`
-}
-type Parser struct {
-	Type  string `json:"type"`
-	Token string `json:"token"`
 }

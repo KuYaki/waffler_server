@@ -8,7 +8,8 @@ import (
 
 type WafflerStorager interface {
 	CreateSource(*models.SourceDTO) error
-	SearchBySourceName(search *models.Search) ([]models.SourceDTO, error)
+	SearchBySourceName(search string) ([]models.SourceDTO, error)
+	UpdateSource(*models.SourceDTO) error
 	CreateSourceAndRecords(source *telegram.DataTelegram) error
 	SelectRecords(idSource int) ([]models.RecordDTO, error)
 }
@@ -65,6 +66,15 @@ func (s WafflerStorage) CreateSource(source *models.SourceDTO) error {
 	return nil
 }
 
+func (s WafflerStorage) UpdateSource(source *models.SourceDTO) error {
+	err := s.conn.Model(source).Updates(source).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s WafflerStorage) CreateRecords(source []models.RecordDTO) error {
 	err := s.conn.Create(source).Error
 	if err != nil {
@@ -74,10 +84,10 @@ func (s WafflerStorage) CreateRecords(source []models.RecordDTO) error {
 	return nil
 }
 
-func (s WafflerStorage) SearchBySourceName(search *models.Search) ([]models.SourceDTO, error) {
+func (s WafflerStorage) SearchBySourceName(search string) ([]models.SourceDTO, error) {
 	sources := []models.SourceDTO{}
 
-	err := s.conn.Where("name LIKE ?", "%"+search.QueryForName+"%").Find(&sources).Error
+	err := s.conn.Where("name LIKE ?", search+"%").Find(&sources).Error
 	if err != nil {
 		return nil, err
 	}

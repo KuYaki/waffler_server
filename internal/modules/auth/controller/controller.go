@@ -5,8 +5,8 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/handler"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
-	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/auth/service"
+	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/go-faster/errors"
 	"github.com/ptflp/godecoder"
 
@@ -48,7 +48,7 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, statusCode, err := a.auth.Login(context.Background(), models.User{
+	out, statusCode, err := a.auth.Login(context.Background(), message.User{
 		Username: req.Username,
 		Password: req.Password,
 	})
@@ -75,7 +75,7 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, statusCode, err := a.auth.Login(context.Background(), models.User{
+	out, statusCode, err := a.auth.Login(context.Background(), message.User{
 		Username: req.Username,
 		Password: req.Password,
 	})

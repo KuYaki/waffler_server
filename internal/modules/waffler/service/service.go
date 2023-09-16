@@ -7,11 +7,14 @@ import (
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/storage"
+	"github.com/brianvoe/gofakeit/v6"
 	"go.uber.org/zap"
+	"sort"
+	"time"
 )
 
 type Waffler interface {
-	Search(search *models.Search) (*message.SearchResponse, error)
+	Search(search *message.Search) (*message.SearchResponse, error)
 	InfoSource(domain string) *message.InfoRequest
 	Score(request *message.ScoreRequest) (*message.ScoreResponse, error)
 	ParseSource(search *message.ParserRequest) error
@@ -44,6 +47,18 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 			Timestamp:  records[i].CreatedAt,
 		})
 	}
+
+	goFake := make([]message.Record, 0, 101)
+
+	for i := 0; i < 100; i++ {
+		s := message.Record{
+			RecordText: gofakeit.Cat(),
+			Score:      gofakeit.IntRange(0, 10),
+			Timestamp:  time.Now(),
+		}
+		goFake = append(goFake, s)
+	}
+	scoreResponse.Records = goFake
 
 	scoreResponse.Records = scoreResponse.Records[scoreResponse.Cursor : scoreResponse.Cursor+request.Limit]
 	scoreResponse.Cursor += len(scoreResponse.Records)
@@ -90,20 +105,96 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 		return err
 	}
 
+	source, err := s.storage.SearchBySourceName(dataTelegram.Source.Name)
+	if err != nil {
+		s.log.Error("error: search", zap.Error(err))
+		return err
+	}
+	records, err := s.storage.SelectRecords(source[0].ID)
+	if err != nil {
+		s.log.Error("error: search", zap.Error(err))
+		return err
+	}
+
+	updateScoreRecods(records, &source[0], dataTelegram)
+
+	err = s.storage.UpdateSource(&source[0])
+	if err != nil {
+		s.log.Error("error: search", zap.Error(err))
+		return err
+	}
+
 	return err
 }
 
-func (s *WafflerService) Search(search *models.Search) (*message.SearchResponse, error) {
-	source, err := s.storage.SearchBySourceName(search)
+func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
+	source, err := s.storage.SearchBySourceName(search.QueryForName)
 	if err != nil {
 		s.log.Error("error: search", zap.Error(err))
 		return nil, err
 	}
+	goFake := make([]models.SourceDTO, 0, 101)
 
+	for i := 0; i < 100; i++ {
+		s := models.SourceDTO{
+			ID:          i,
+			Name:        gofakeit.Name(),
+			SourceType:  models.SourceType(gofakeit.RandomInt([]int{0, 1})),
+			SourceUrl:   gofakeit.URL(),
+			WaffelScore: gofakeit.Number(0, 10),
+			RacismScore: gofakeit.Number(0, 10),
+		}
+		goFake = append(goFake, s)
+	}
+	source = sortSources(goFake, search)
 	sourceRes := source[search.Cursor : search.Cursor+search.Limit]
 	search.Cursor += len(sourceRes)
+
 	return &message.SearchResponse{
 		Sources: sourceRes,
 		Cursor:  search.Cursor,
 	}, nil
 }
+
+func sortSources(sources []models.SourceDTO, search *message.Search) []models.SourceDTO {
+	switch search.Order {
+	case orderSort[0]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].Name > sources[j].Name
+		})
+	case orderSort[1]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].Name < sources[j].Name
+		})
+	case orderSort[2]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].SourceType > sources[j].SourceType
+		})
+	case orderSort[3]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].SourceType < sources[j].SourceType
+		})
+	case orderSort[4]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].WaffelScore > sources[j].WaffelScore
+		})
+	case orderSort[5]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].WaffelScore < sources[j].WaffelScore
+		})
+	case orderSort[6]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].RacismScore > sources[j].RacismScore
+		})
+	case orderSort[7]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].RacismScore < sources[j].RacismScore
+		})
+	}
+
+	return sources
+
+}
+
+var orderSort = []string{"name_up", "name_down", "source_up", "source_down",
+	"waffler_up", "waffler_down", "rasizm_up", "rasizm_down"}
