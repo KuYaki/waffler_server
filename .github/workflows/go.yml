@@ -5,9 +5,8 @@ name: Go
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    branches:
+      - master
 
 jobs:
   test:
@@ -36,7 +35,7 @@ jobs:
       run: go test -v ./...
       
   deploy:
-#    needs: test
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -59,18 +58,18 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/waffler_server:latest
           
-#      - name: Run command on remote server
-#        uses: D3rHase/ssh-command-action@v0.2.2
-#        with:
-#          host: ${{secrets.SSH_HOST}}
-#          user: ${{secrets.SSH_USER}}
-#          private_key: ${{secrets.SSH_PRIVATE_KEY}}
-#          command: |
-#            cd ./waffler_server;
-#            git checkout master;
-#            git pull;
-#            docker-compose --file Docker-compose.yaml down;
-#            docker system prune --all --force;
-#            docker-compose --file Docker-compose.yaml up -d;
+      - name: Run command on remote server
+        uses: D3rHase/ssh-command-action@v0.2.2
+        with:
+          host: ${{secrets.SSH_HOST}}
+          user: ${{secrets.SSH_USER}}
+          private_key: ${{secrets.SSH_PRIVATE_KEY}}
+          command: |
+            cd ./waffler_server;
+            git checkout master;
+            git pull;
+            docker-compose --file Docker-compose.yaml down;
+            docker system prune --all --force;
+            docker-compose --file Docker-compose.yaml up -d;
             
     
