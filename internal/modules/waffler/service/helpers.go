@@ -10,8 +10,8 @@ func updateScoreRecods(records []models.RecordDTO, source *models.SourceDTO, dat
 	switch dataTelegram.Records[0].ScoreType {
 	case models.Waffler:
 		typeScore = models.Waffler
-	case models.Rasizm:
-		typeScore = models.Rasizm
+	case models.Racism:
+		typeScore = models.Racism
 	}
 
 	source.WaffelScore = countingScore(records, typeScore) / len(records)

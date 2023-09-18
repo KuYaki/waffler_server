@@ -197,4 +197,4 @@ func sortSources(sources []models.SourceDTO, search *message.Search) []models.So
 }
 
 var orderSort = []string{"name_up", "name_down", "source_up", "source_down",
-	"waffler_up", "waffler_down", "rasizm_up", "rasizm_down"}
+	"waffler_up", "waffler_down", "racism_up", "racism_down"}

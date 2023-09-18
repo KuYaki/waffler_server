@@ -20,7 +20,7 @@ type SourceDTO struct {
 	SourceType  SourceType `json:"source_type"`
 	SourceUrl   string     `json:"source_url"`
 	WaffelScore int        `json:"waffler_score"`
-	RacismScore int        `json:"rasizm_score"`
+	RacismScore int        `json:"racism_score"`
 }
 
 type RecordDTO struct {
@@ -36,7 +36,7 @@ type ScoreType int
 
 const (
 	Waffler ScoreType = iota
-	Rasizm
+	Racism
 )
 
 type SourceType int
