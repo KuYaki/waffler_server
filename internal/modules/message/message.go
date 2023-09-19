@@ -48,11 +48,11 @@ type Source struct {
 }
 
 type ScoreRequest struct {
-	SourceId int    `json:"source_id"`
-	Type     string `json:"score_type"`
-	Limit    int    `json:"limit"`
-	Cursor   int    `json:"cursor"`
-	Order    string `json:"order"`
+	SourceId int                `json:"source_id"`
+	Type     []models.ScoreType `json:"score_type"`
+	Limit    int                `json:"limit"`
+	Cursor   int                `json:"cursor"`
+	Order    string             `json:"order"`
 }
 
 type ScoreResponse struct {
