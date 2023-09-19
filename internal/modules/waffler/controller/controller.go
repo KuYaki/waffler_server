@@ -8,6 +8,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	service2 "github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
+	"github.com/gorilla/websocket"
 
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
@@ -21,6 +22,7 @@ type Waffler interface {
 	Score(w http.ResponseWriter, r *http.Request)
 	Info(w http.ResponseWriter, r *http.Request)
 	Parse(w http.ResponseWriter, r *http.Request)
+	WsTest(w http.ResponseWriter, r *http.Request)
 }
 
 type Waffl struct {
@@ -35,6 +37,45 @@ type Waffl struct {
 func NewWaffl(service service.Waffler, user service2.Userer, components *component.Components) Waffler {
 	return &Waffl{service: service,
 		log: components.Logger, token: components.Token, userService: user, Responder: components.Responder, Decoder: components.Decoder}
+}
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
+}
+
+func (wa *Waffl) WsTest(w http.ResponseWriter, r *http.Request) {
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		wa.Responder.ErrorInternal(w, err)
+		return
+	}
+
+	ws.WriteMessage(websocket.TextMessage, []byte("hello"))
+
+	defer ws.Close()
+
+	err = reader(ws)
+	if err != nil {
+		wa.Responder.ErrorInternal(w, err)
+		return
+	}
+
+}
+
+func reader(conn *websocket.Conn) error {
+	for {
+		messageType, p, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+
+		if err := conn.WriteMessage(messageType, p); err != nil {
+			return err
+		}
+	}
+
 }
 
 func (wa *Waffl) Search(w http.ResponseWriter, r *http.Request) {

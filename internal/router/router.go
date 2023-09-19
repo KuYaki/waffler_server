@@ -42,6 +42,7 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 		sourceController := controllers.Waffler
 		r.Post("/search", sourceController.Search)
 		r.Post("/parse", sourceController.Parse)
+		r.HandleFunc("/ws", sourceController.WsTest)
 		r.Post("/score", sourceController.Score)
 		r.Post("/info", sourceController.Info)
 	})

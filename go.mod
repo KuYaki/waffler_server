@@ -3,11 +3,13 @@ module github.com/KuYaki/waffler_server
 go 1.21
 
 require (
+	github.com/brianvoe/gofakeit/v6 v6.23.2
 	github.com/go-chi/chi/v5 v5.0.10
+	github.com/go-chi/cors v1.2.1
 	github.com/go-faster/errors v0.6.1
-	github.com/goccy/go-json v0.10.2
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.3.1
+	github.com/gorilla/websocket v1.4.1
 	github.com/gotd/td v0.85.0
 	github.com/jaskaur18/gotgproto v1.1.3
 	github.com/joho/godotenv v1.5.1
@@ -23,14 +25,12 @@ require (
 
 require (
 	github.com/AnimeKaizoku/cacher v1.0.1 // indirect
-	github.com/brianvoe/gofakeit/v6 v6.23.2 // indirect
 	github.com/bytedance/sonic v1.10.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/glebarez/sqlite v1.9.0 // indirect
-	github.com/go-chi/cors v1.2.1 // indirect
 	github.com/go-faster/jx v1.1.0 // indirect
 	github.com/go-faster/xor v1.0.0 // indirect
 	github.com/go-playground/validator/v10 v10.15.1 // indirect
