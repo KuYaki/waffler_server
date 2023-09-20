@@ -29,7 +29,7 @@ func NewWafflerService(storage storage.WafflerStorager, components *component.Co
 }
 
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
-	records, err := u.storage.SelectRecords(request.SourceId)
+	records, err := u.storage.SelectRecordsSourceID(request.SourceId)
 	if err != nil {
 		return nil, err
 	}
@@ -99,57 +99,107 @@ func (u *WafflerService) InfoSource(domain string) *message.InfoRequest {
 }
 
 func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
-	dataTelegram, err := s.tg.ParseChatTelegram(search.SourceURL, 10) // TODO: search.Limit
+	dataTelegram, err := s.tg.ParseChatTelegram(search.SourceURL, 20) // TODO: search.Limit
 	if err != nil {
 		s.log.Error("search", zap.Error(err))
 	}
-	newRecords := []models.RecordDTO{}
+	newRecords := []*models.RecordDTO{}
 	chatGPT := gpt.NewChatGPT(search.Parser.Token)
 
+	records := make([]*models.RecordDTO, 0, 1)
+	source, err := s.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+	if err != nil {
+		s.log.Error("error: search", zap.Error(err))
+		return err
+	}
+	if source != nil {
+		records, err = s.storage.SelectRecordsSourceID(source.ID)
+
+		if err != nil {
+			s.log.Error("error: search", zap.Error(err))
+			return err
+		}
+	}
 	for i, r := range dataTelegram.Records {
 		if r.RecordText == "" {
 			continue
 		}
 
-		dataTelegram.Records[i].Score, err = chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
-		if err != nil {
-			s.log.Error("error: question gpt", zap.Error(err))
+		existText := false
+		if len(records) != 0 {
+			for _, record := range records {
+				if record.RecordText == r.RecordText {
+					r.RecordText = record.RecordText
+					existText = true
+					break
+				}
+
+			}
+		}
+		if existText {
+			continue
+		}
+		var errWarn error
+		dataTelegram.Records[i].Score, errWarn = chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
+		if errWarn != nil {
+			s.log.Warn("error: question gpt", zap.Error(err))
 		}
 		newRecords = append(newRecords, dataTelegram.Records[i])
 	}
 
 	dataTelegram.Records = newRecords
 
-	err = s.storage.CreateSourceAndRecords(dataTelegram)
-	if err != nil {
-		s.log.Error("error: create", zap.Error(err))
-		return err
+	if source == nil {
+		err := s.storage.CreateSource(dataTelegram.Source)
+		if err != nil {
+			s.log.Error("error: create", zap.Error(err))
+			return err
+		}
+
+		source, err = s.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+		if err != nil {
+			s.log.Error("error: search", zap.Error(err))
+			return err
+		}
 	}
 
-	source, err := s.storage.SearchBySourceName(dataTelegram.Source.Name)
-	if err != nil {
-		s.log.Error("error: search", zap.Error(err))
-		return err
-	}
-	records, err := s.storage.SelectRecords(source[0].ID)
-	if err != nil {
-		s.log.Error("error: search", zap.Error(err))
-		return err
-	}
+	if len(dataTelegram.Records) != 0 {
+		for i, _ := range dataTelegram.Records {
+			dataTelegram.Records[i].SourceID = source.ID
 
-	updateScoreRecods(records, &source[0], dataTelegram)
+		}
 
-	err = s.storage.UpdateSource(&source[0])
-	if err != nil {
-		s.log.Error("error: search", zap.Error(err))
-		return err
+		err := s.storage.CreateRecords(dataTelegram.Records)
+		if err != nil {
+			s.log.Error("error: create", zap.Error(err))
+			return err
+		}
+		records, err = s.storage.SelectRecordsSourceID(source.ID)
+		if err != nil {
+			s.log.Error("error: search", zap.Error(err))
+			return err
+		}
+
+		records, err = s.storage.SelectRecordsSourceID(source.ID)
+		if err != nil {
+			s.log.Error("error: search", zap.Error(err))
+			return err
+		}
+
+		updateScoreRecods(records, source, dataTelegram)
+
+		err = s.storage.UpdateSource(source)
+		if err != nil {
+			s.log.Error("error: search", zap.Error(err))
+			return err
+		}
 	}
 
 	return err
 }
 
 func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
-	source, err := s.storage.SearchBySourceName(search.QueryForName)
+	source, err := s.storage.SearchByLikeSourceName(search.QueryForName)
 	if err != nil {
 		s.log.Error("error: search", zap.Error(err))
 		return nil, err

@@ -8,10 +8,13 @@ import (
 
 type WafflerStorager interface {
 	CreateSource(*models.SourceDTO) error
-	SearchBySourceName(search string) ([]models.SourceDTO, error)
+
+	CreateRecords(records []*models.RecordDTO) error
+	SearchByLikeSourceName(search string) ([]models.SourceDTO, error)
+	SearchBySourceUrl(url string) (*models.SourceDTO, error)
 	UpdateSource(*models.SourceDTO) error
 	CreateSourceAndRecords(source *telegram.DataTelegram) error
-	SelectRecords(idSource int) ([]models.RecordDTO, error)
+	SelectRecordsSourceID(idSource int) ([]*models.RecordDTO, error)
 }
 
 func NewWafflerStorage(conn *gorm.DB) WafflerStorager {
@@ -75,7 +78,7 @@ func (s WafflerStorage) UpdateSource(source *models.SourceDTO) error {
 	return nil
 }
 
-func (s WafflerStorage) CreateRecords(source []models.RecordDTO) error {
+func (s WafflerStorage) CreateRecords(source []*models.RecordDTO) error {
 	err := s.conn.Create(source).Error
 	if err != nil {
 		return err
@@ -84,7 +87,7 @@ func (s WafflerStorage) CreateRecords(source []models.RecordDTO) error {
 	return nil
 }
 
-func (s WafflerStorage) SearchBySourceName(search string) ([]models.SourceDTO, error) {
+func (s WafflerStorage) SearchByLikeSourceName(search string) ([]models.SourceDTO, error) {
 	sources := []models.SourceDTO{}
 
 	err := s.conn.Where("name LIKE ?", search+"%").Find(&sources).Error
@@ -95,8 +98,24 @@ func (s WafflerStorage) SearchBySourceName(search string) ([]models.SourceDTO, e
 	return sources, nil
 }
 
-func (s WafflerStorage) SelectRecords(idSource int) ([]models.RecordDTO, error) {
-	records := []models.RecordDTO{}
+func (s WafflerStorage) SearchBySourceUrl(url string) (*models.SourceDTO, error) {
+	source := models.SourceDTO{}
+
+	res := s.conn.Where(models.SourceDTO{SourceUrl: url}).Find(&source)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	if res.RowsAffected == 0 {
+		return nil, nil
+
+	}
+
+	return &source, nil
+}
+
+func (s WafflerStorage) SelectRecordsSourceID(idSource int) ([]*models.RecordDTO, error) {
+	records := []*models.RecordDTO{}
 	err := s.conn.Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
 	if err != nil {
 		return nil, err

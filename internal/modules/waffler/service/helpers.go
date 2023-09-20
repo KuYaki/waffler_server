@@ -5,7 +5,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/models"
 )
 
-func updateScoreRecods(records []models.RecordDTO, source *models.SourceDTO, dataTelegram *telegram.DataTelegram) {
+func updateScoreRecods(records []*models.RecordDTO, source *models.SourceDTO, dataTelegram *telegram.DataTelegram) {
 	var typeScore models.ScoreType
 	switch dataTelegram.Records[0].ScoreType {
 	case models.Waffler:
@@ -18,7 +18,7 @@ func updateScoreRecods(records []models.RecordDTO, source *models.SourceDTO, dat
 
 }
 
-func countingScore(records []models.RecordDTO, ScoreType models.ScoreType) int {
+func countingScore(records []*models.RecordDTO, ScoreType models.ScoreType) int {
 	score := 0
 	for _, r := range records {
 		if r.ScoreType == ScoreType {

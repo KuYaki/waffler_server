@@ -85,12 +85,12 @@ func (t *Telegram) ParseChatTelegram(query string, limit int) (*DataTelegram, er
 	}
 
 	dataTg := &DataTelegram{
-		models.SourceDTO{
+		&models.SourceDTO{
 			Name:       channel.Username + " " + "@" + channel.Title,
 			SourceType: models.Telegram,
 			SourceUrl:  query,
 		},
-		make([]models.RecordDTO, 0, limit),
+		make([]*models.RecordDTO, 0, limit),
 	}
 
 	for i := 0; i < limit; {
@@ -134,7 +134,7 @@ func (t *Telegram) ParseChat(dataTg *DataTelegram, channel *tg2.Channel, limit i
 		case *tg2.Message: // message#38116ee0
 			message := mesRaw.(*tg2.Message)
 			dataTg.Records = append(dataTg.Records,
-				models.RecordDTO{
+				&models.RecordDTO{
 					RecordText: message.Message,
 					CreatedAt:  time.Unix(int64(message.Date), 0),
 				})
@@ -149,6 +149,6 @@ func (t *Telegram) ParseChat(dataTg *DataTelegram, channel *tg2.Channel, limit i
 }
 
 type DataTelegram struct {
-	Source  models.SourceDTO
-	Records []models.RecordDTO
+	Source  *models.SourceDTO
+	Records []*models.RecordDTO
 }
