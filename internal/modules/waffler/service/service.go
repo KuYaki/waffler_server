@@ -158,6 +158,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	recordsRaw := make([]models.SourceDTO, 0, search.Limit)
 	for i := search.Cursor; i < len(source) && i < search.Limit+search.Cursor; i++ {
 		recordsRaw = append(recordsRaw, models.SourceDTO{
+			ID:          source[i].ID,
 			Name:        source[i].Name,
 			SourceType:  source[i].SourceType,
 			SourceUrl:   source[i].SourceUrl,
