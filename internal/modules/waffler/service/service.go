@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	tg "github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
@@ -8,7 +9,9 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/storage"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"sort"
+	"unicode"
 )
 
 type Waffler interface {
@@ -104,7 +107,6 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 	if err != nil {
 		s.log.Error("search", zap.Error(err))
 	}
-	newRecords := []*models.RecordDTO{}
 	chatGPT := gpt.NewChatGPT(search.Parser.Token)
 
 	records := make([]*models.RecordDTO, 0, 1)
@@ -121,10 +123,17 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 			return err
 		}
 	}
-	for i, r := range dataTelegram.Records {
-		if r.RecordText == "" {
+	g := errgroup.Group{}
+	g.SetLimit(20)
+	var indexNewRecords int
+	newRecords := make([]*models.RecordDTO, 0, len(dataTelegram.Records))
+	for _, r := range dataTelegram.Records {
+		if !containsAlphabet(r.RecordText) {
 			continue
 		}
+		indexNewRecords++
+		newRecords = append(newRecords, r)
+		tempIndexRecords := indexNewRecords
 
 		existText := false
 		if len(records) != 0 {
@@ -140,12 +149,25 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 		if existText {
 			continue
 		}
-		var errWarn error
-		dataTelegram.Records[i].Score, errWarn = chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
-		if errWarn != nil {
-			s.log.Warn("error: question gpt", zap.Error(err))
-		}
-		newRecords = append(newRecords, dataTelegram.Records[i])
+
+		g.Go(func() error {
+			fmt.Println("start")
+			var err error
+			res, err := chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
+			if err != nil {
+				s.log.Warn("error: search", zap.Error(err))
+				return err
+			} else {
+				dataTelegram.Records[tempIndexRecords].Score = res
+			}
+			return nil
+		})
+
+	}
+	errWarn := g.Wait()
+	if errWarn != nil {
+		s.log.Warn("error: search", zap.Error(errWarn))
+		return err
 	}
 
 	dataTelegram.Records = newRecords
@@ -254,5 +276,17 @@ func sortSources(sources []models.SourceDTO, search string) []models.SourceDTO {
 	}
 
 	return sources
+
+}
+
+func containsAlphabet(text string) bool {
+	for _, r := range []rune(text) {
+		isValid := unicode.IsLetter(r)
+		if isValid {
+			return true
+		}
+	}
+
+	return false
 
 }
