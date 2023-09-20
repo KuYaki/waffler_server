@@ -17,6 +17,8 @@ type Telegram struct {
 	Client *tg2.Client
 }
 
+const maxParseOnse = 100
+
 func NewTelegram(conf *config.Telegram) (*Telegram, error) {
 	clientType := tgpro.ClientType{
 		Phone: conf.Phone,
@@ -62,7 +64,7 @@ type MessageData struct {
 	TimeMessage time.Time
 }
 
-func (t *Telegram) ParseChat(query string, limit int) (*DataTelegram, error) {
+func (t *Telegram) ParseChatTelegram(query string, limit int) (*DataTelegram, error) {
 	f, err := t.Client.ContactsSearch(context.Background(), &tg2.ContactsSearchRequest{
 		Q:     query,
 		Limit: limit,
@@ -82,17 +84,6 @@ func (t *Telegram) ParseChat(query string, limit int) (*DataTelegram, error) {
 		}
 	}
 
-	mes, err := t.Client.MessagesGetHistory(context.Background(), &tg2.MessagesGetHistoryRequest{
-		Peer: &tg2.InputPeerChannel{
-			ChannelID:  channel.ID,
-			AccessHash: channel.AccessHash},
-		Limit: limit,
-	})
-	if err != nil {
-		log.Fatalln("failed to get chat:", err)
-	}
-	res := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
-
 	dataTg := &DataTelegram{
 		models.SourceDTO{
 			Name:       channel.Username + " " + "@" + channel.Title,
@@ -101,6 +92,41 @@ func (t *Telegram) ParseChat(query string, limit int) (*DataTelegram, error) {
 		},
 		make([]models.RecordDTO, 0, limit),
 	}
+
+	for i := 0; i < limit; {
+		var limitParser int
+		if limit-i > maxParseOnse {
+			limitParser = maxParseOnse
+
+		} else {
+			limitParser = limit - i
+
+		}
+
+		err = t.ParseChat(dataTg, channel, limitParser, i)
+		if err != nil {
+			return nil, err
+		}
+
+		i += limitParser
+
+	}
+	return dataTg, nil
+
+}
+func (t *Telegram) ParseChat(dataTg *DataTelegram, channel *tg2.Channel, limit int, AddOffset int) error {
+
+	mes, err := t.Client.MessagesGetHistory(context.Background(), &tg2.MessagesGetHistoryRequest{
+		Peer: &tg2.InputPeerChannel{
+			ChannelID:  channel.ID,
+			AccessHash: channel.AccessHash},
+		Limit:     limit,
+		AddOffset: AddOffset,
+	})
+	if err != nil {
+		log.Fatalln("failed to get chat:", err)
+	}
+	res := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
 
 	for _, mesRaw := range res.Messages {
 		switch v := mesRaw.(type) {
@@ -114,12 +140,12 @@ func (t *Telegram) ParseChat(query string, limit int) (*DataTelegram, error) {
 				})
 		case *tg2.MessageService: // messageService#2b085862
 		default:
-			return nil, fmt.Errorf("unknown message type: %T", v) // ToDo: log
+			return fmt.Errorf("unknown message type: %T", v) // ToDo: log
 		}
 
 	}
 
-	return dataTg, nil
+	return nil
 }
 
 type DataTelegram struct {

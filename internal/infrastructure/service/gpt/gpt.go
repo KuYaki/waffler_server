@@ -50,7 +50,7 @@ func (g *ChatGPT) ConstructQuestionGPT(mess string, typeAnswer AnswerTypeGPT) (i
 }
 
 func parseAnswerGPT(answer string) (int, error) {
-	var scoreFloat = []string{"1.0", "0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0"}
+	var scoreFloat = []string{"1.0", "0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0", "0"}
 	var resRaw string
 	var find bool
 	for _, v := range scoreFloat {
@@ -62,10 +62,11 @@ func parseAnswerGPT(answer string) (int, error) {
 		if res {
 			resRaw = v
 			find = true
+			break
 		}
 	}
 	if !find {
-		return 0, errors.New("error: unknown answer")
+		return 0, errors.New("error: parseAnswerGPT" + answer)
 	}
 
 	var result int

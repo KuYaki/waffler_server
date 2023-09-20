@@ -99,7 +99,7 @@ func (u *WafflerService) InfoSource(domain string) *message.InfoRequest {
 }
 
 func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
-	dataTelegram, err := s.tg.ParseChat(search.SourceURL, 10) // TODO: search.Limit
+	dataTelegram, err := s.tg.ParseChatTelegram(search.SourceURL, 10) // TODO: search.Limit
 	if err != nil {
 		s.log.Error("search", zap.Error(err))
 	}
