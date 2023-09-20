@@ -97,6 +97,8 @@ func parseAnswerGPT(answer string) (int, error) {
 		result = 1
 	case 0.0:
 		result = 0
+	default:
+		return 0, errors.New(fmt.Sprintf("unknown float: %.2f", float))
 
 	}
 	return result, nil
