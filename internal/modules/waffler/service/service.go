@@ -125,7 +125,7 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 	}
 	g := errgroup.Group{}
 	g.SetLimit(20)
-	var indexNewRecords int
+	var indexNewRecords = -1
 	newRecords := make([]*models.RecordDTO, 0, len(dataTelegram.Records))
 	for _, r := range dataTelegram.Records {
 		if !containsAlphabet(r.RecordText) {
