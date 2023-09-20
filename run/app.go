@@ -102,6 +102,15 @@ func (a *App) Bootstrap() Runner {
 		&models.SourceDTO{},
 		&models.RecordDTO{},
 	)
+
+	if a.conf.TestApp {
+		err = db.TestDB(conn)
+		if err != nil {
+			a.logger.Fatal("app: db test error", zap.Error(err))
+			return nil
+		}
+	}
+
 	if err != nil {
 		a.logger.Fatal("app: db migration error", zap.Error(err))
 		return nil

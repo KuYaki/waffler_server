@@ -10,6 +10,7 @@ import (
 
 type AppConf struct {
 	AppName  string    `yaml:"app_name"`
+	TestApp  bool      `yaml:"test_app"`
 	Server   *Server   `yaml:"server"`
 	Logger   *Logger   `yaml:"logger"`
 	DB       *DB       `yaml:"database_url"`
@@ -55,6 +56,7 @@ type Server struct {
 func NewAppConf() AppConf {
 	return AppConf{
 		AppName: os.Getenv("APP_NAME"),
+		TestApp: getBool("TEST_APP"),
 		Logger: &Logger{
 			Level: os.Getenv("LOG_LEVEL"),
 		},
@@ -82,6 +84,16 @@ func NewAppConf() AppConf {
 			AccessSecret:  os.Getenv("ACCESS_SECRET"),
 			RefreshSecret: os.Getenv("REFRESH_SECRET"),
 		},
+	}
+}
+
+func getBool(key string) bool {
+	res := os.Getenv(key)
+	if res == "true" {
+		return true
+	} else {
+		return false
+
 	}
 }
 
