@@ -7,10 +7,8 @@ import (
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/storage"
-	"github.com/brianvoe/gofakeit/v6"
 	"go.uber.org/zap"
 	"sort"
-	"time"
 )
 
 type Waffler interface {
@@ -31,40 +29,63 @@ func NewWafflerService(storage storage.WafflerStorager, components *component.Co
 }
 
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
-	scoreResponse := &message.ScoreResponse{
-		Cursor: request.Cursor,
-	}
-
 	records, err := u.storage.SelectRecords(request.SourceId)
 	if err != nil {
 		return nil, err
 	}
-	for i := scoreResponse.Cursor; i < len(records) && i < request.Limit+scoreResponse.Cursor+request.Limit; i++ {
 
-		scoreResponse.Records = append(scoreResponse.Records, message.Record{
+	recordsNew := make([]message.Record, 0, request.Limit)
+	for i := request.Cursor; i < len(records) && i < request.Limit+request.Cursor; i++ {
+		recordsNew = append(recordsNew, message.Record{
 			RecordText: records[i].RecordText,
 			Score:      records[i].Score,
 			Timestamp:  records[i].CreatedAt,
 		})
 	}
 
-	goFake := make([]message.Record, 0, 101)
+	scoreResponse := &message.ScoreResponse{}
 
-	for i := 0; i < 100; i++ {
-		s := message.Record{
-			RecordText: gofakeit.Cat(),
-			Score:      gofakeit.IntRange(0, 10),
-			Timestamp:  time.Now(),
-		}
-		goFake = append(goFake, s)
-	}
-	scoreResponse.Records = goFake
+	scoreResponse.Records = sortRecords(recordsNew, request.Order)
 
-	scoreResponse.Records = scoreResponse.Records[scoreResponse.Cursor : scoreResponse.Cursor+request.Limit]
 	scoreResponse.Cursor += len(scoreResponse.Records)
 
 	return scoreResponse, nil
 }
+
+func sortRecords(records []message.Record, order string) []message.Record {
+	var orderRecords = []string{"record_text_up", "record_text_down", "score_up", "score_down",
+		"time_up", "time_down"}
+	switch order {
+	case orderRecords[0]:
+		sort.Slice(records, func(i, j int) bool {
+			return records[i].RecordText < records[j].RecordText
+		})
+	case orderRecords[1]:
+		sort.Slice(records, func(i, j int) bool {
+			return records[i].RecordText > records[j].RecordText
+		})
+	case orderRecords[2]:
+		sort.Slice(records, func(i, j int) bool {
+			return records[i].Score < records[j].Score
+		})
+	case orderRecords[3]:
+		sort.Slice(records, func(i, j int) bool {
+			return records[i].Score > records[j].Score
+		})
+	case orderRecords[4]:
+		sort.Slice(records, func(i, j int) bool {
+			return records[i].Timestamp.Before(records[j].Timestamp)
+		})
+	case orderRecords[5]:
+		sort.Slice(records, func(i, j int) bool {
+			return records[i].Timestamp.After(records[j].Timestamp)
+		})
+
+	}
+
+	return records
+}
+
 func (u *WafflerService) InfoSource(domain string) *message.InfoRequest {
 	res := &message.InfoRequest{}
 	switch domain {
@@ -133,68 +154,65 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 		s.log.Error("error: search", zap.Error(err))
 		return nil, err
 	}
-	goFake := make([]models.SourceDTO, 0, 101)
 
-	for i := 0; i < 100; i++ {
-		s := models.SourceDTO{
-			ID:          i,
-			Name:        gofakeit.Name(),
-			SourceType:  models.SourceType(gofakeit.RandomInt([]int{0, 1})),
-			SourceUrl:   gofakeit.URL(),
-			WaffelScore: gofakeit.Number(0, 10),
-			RacismScore: gofakeit.Number(0, 10),
-		}
-		goFake = append(goFake, s)
+	recordsRaw := make([]models.SourceDTO, 0, search.Limit)
+	for i := search.Cursor; i < len(source) && i < search.Limit+search.Cursor; i++ {
+		recordsRaw = append(recordsRaw, models.SourceDTO{
+			Name:        source[i].Name,
+			SourceType:  source[i].SourceType,
+			SourceUrl:   source[i].SourceUrl,
+			WaffelScore: source[i].WaffelScore,
+			RacismScore: source[i].RacismScore,
+		})
 	}
-	source = sortSources(goFake, search)
-	sourceRes := source[search.Cursor : search.Cursor+search.Limit]
-	search.Cursor += len(sourceRes)
+
+	source = sortSources(recordsRaw, search.Order)
+	search.Cursor += len(source)
 
 	return &message.SearchResponse{
-		Sources: sourceRes,
+		Sources: source,
 		Cursor:  search.Cursor,
 	}, nil
 }
 
-func sortSources(sources []models.SourceDTO, search *message.Search) []models.SourceDTO {
-	switch search.Order {
-	case orderSort[0]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].Name > sources[j].Name
-		})
-	case orderSort[1]:
+func sortSources(sources []models.SourceDTO, search string) []models.SourceDTO {
+	var orderSources = []string{"name_up", "name_down", "source_up", "source_down",
+		"waffler_up", "waffler_down", "racism_up", "racism_down"}
+	switch search {
+	case orderSources[0]:
 		sort.Slice(sources, func(i, j int) bool {
 			return sources[i].Name < sources[j].Name
 		})
-	case orderSort[2]:
+	case orderSources[1]:
 		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].SourceType > sources[j].SourceType
+			return sources[i].Name > sources[j].Name
 		})
-	case orderSort[3]:
+	case orderSources[2]:
 		sort.Slice(sources, func(i, j int) bool {
 			return sources[i].SourceType < sources[j].SourceType
 		})
-	case orderSort[4]:
+	case orderSources[3]:
 		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].WaffelScore > sources[j].WaffelScore
+			return sources[i].SourceType > sources[j].SourceType
 		})
-	case orderSort[5]:
+	case orderSources[4]:
 		sort.Slice(sources, func(i, j int) bool {
 			return sources[i].WaffelScore < sources[j].WaffelScore
 		})
-	case orderSort[6]:
+	case orderSources[5]:
 		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].RacismScore > sources[j].RacismScore
+			return sources[i].WaffelScore > sources[j].WaffelScore
 		})
-	case orderSort[7]:
+	case orderSources[6]:
 		sort.Slice(sources, func(i, j int) bool {
 			return sources[i].RacismScore < sources[j].RacismScore
+		})
+	case orderSources[7]:
+		sort.Slice(sources, func(i, j int) bool {
+			return sources[i].RacismScore > sources[j].RacismScore
 		})
 	}
 
 	return sources
 
 }
-
-var orderSort = []string{"name_up", "name_down", "source_up", "source_down",
-	"waffler_up", "waffler_down", "racism_up", "racism_down"}
