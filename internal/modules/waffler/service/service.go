@@ -29,18 +29,19 @@ func NewWafflerService(storage storage.WafflerStorager, components *component.Co
 }
 
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
-	records, err := u.storage.SelectRecordsSourceID(request.SourceId)
+	records, err := u.storage.SelectRecordsSourceIDOffsetLimit(request.SourceId, request.Cursor, request.Limit)
 	if err != nil {
 		return nil, err
 	}
 
-	recordsNew := make([]message.Record, 0, request.Limit)
-	for i := request.Cursor; i < len(records) && i < request.Limit+request.Cursor; i++ {
-		recordsNew = append(recordsNew, message.Record{
+	recordsNew := make([]*message.Record, 0, len(records))
+	for i := range records {
+		recordsNew = append(recordsNew, &message.Record{
 			RecordText: records[i].RecordText,
 			Score:      records[i].Score,
 			Timestamp:  records[i].CreatedAt,
 		})
+
 	}
 
 	scoreResponse := &message.ScoreResponse{}
@@ -52,7 +53,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 	return scoreResponse, nil
 }
 
-func sortRecords(records []message.Record, order string) []message.Record {
+func sortRecords(records []*message.Record, order string) []*message.Record {
 	var orderRecords = []string{"record_text_up", "record_text_down", "score_up", "score_down",
 		"time_up", "time_down"}
 	switch order {
@@ -199,29 +200,17 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 }
 
 func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
-	source, err := s.storage.SearchByLikeSourceName(search.QueryForName)
+	source, err := s.storage.SearchByLikeSourceName(search.QueryForName, search.Cursor, search.Limit)
 	if err != nil {
 		s.log.Error("error: search", zap.Error(err))
 		return nil, err
 	}
 
-	recordsRaw := make([]models.SourceDTO, 0, search.Limit)
-	for i := search.Cursor; i < len(source) && i < search.Limit+search.Cursor; i++ {
-		recordsRaw = append(recordsRaw, models.SourceDTO{
-			ID:          source[i].ID,
-			Name:        source[i].Name,
-			SourceType:  source[i].SourceType,
-			SourceUrl:   source[i].SourceUrl,
-			WaffelScore: source[i].WaffelScore,
-			RacismScore: source[i].RacismScore,
-		})
-	}
-
-	source = sortSources(recordsRaw, search.Order)
-	search.Cursor += len(source)
+	sourceSort := sortSources(source, search.Order)
+	search.Cursor += len(sourceSort)
 
 	return &message.SearchResponse{
-		Sources: source,
+		Sources: sourceSort,
 		Cursor:  search.Cursor,
 	}, nil
 }

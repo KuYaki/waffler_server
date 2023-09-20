@@ -10,11 +10,12 @@ type WafflerStorager interface {
 	CreateSource(*models.SourceDTO) error
 
 	CreateRecords(records []*models.RecordDTO) error
-	SearchByLikeSourceName(search string) ([]models.SourceDTO, error)
+	SearchByLikeSourceName(search string, offset int, limit int) ([]models.SourceDTO, error)
 	SearchBySourceUrl(url string) (*models.SourceDTO, error)
 	UpdateSource(*models.SourceDTO) error
 	CreateSourceAndRecords(source *telegram.DataTelegram) error
 	SelectRecordsSourceID(idSource int) ([]*models.RecordDTO, error)
+	SelectRecordsSourceIDOffsetLimit(idSource int, offset int, limit int) ([]*models.RecordDTO, error)
 }
 
 func NewWafflerStorage(conn *gorm.DB) WafflerStorager {
@@ -87,10 +88,11 @@ func (s WafflerStorage) CreateRecords(source []*models.RecordDTO) error {
 	return nil
 }
 
-func (s WafflerStorage) SearchByLikeSourceName(search string) ([]models.SourceDTO, error) {
+func (s WafflerStorage) SearchByLikeSourceName(search string, offset int, limit int) ([]models.SourceDTO, error) {
 	sources := []models.SourceDTO{}
 
-	err := s.conn.Where("name LIKE ?", search+"%").Find(&sources).Error
+	// пропустить первые 10, затем выбрать 5
+	err := s.conn.Offset(offset).Limit(limit).Where("name LIKE ?", search+"%").Find(&sources).Error
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +119,16 @@ func (s WafflerStorage) SearchBySourceUrl(url string) (*models.SourceDTO, error)
 func (s WafflerStorage) SelectRecordsSourceID(idSource int) ([]*models.RecordDTO, error) {
 	records := []*models.RecordDTO{}
 	err := s.conn.Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (s WafflerStorage) SelectRecordsSourceIDOffsetLimit(idSource int, offset int, limit int) ([]*models.RecordDTO, error) {
+	records := []*models.RecordDTO{}
+	err := s.conn.Offset(offset).Limit(limit).Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
 	if err != nil {
 		return nil, err
 	}
