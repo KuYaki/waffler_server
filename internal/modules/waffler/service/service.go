@@ -164,7 +164,7 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 	}
 
 	if len(dataTelegram.Records) != 0 {
-		for i, _ := range dataTelegram.Records {
+		for i := range dataTelegram.Records {
 			dataTelegram.Records[i].SourceID = source.ID
 
 		}
