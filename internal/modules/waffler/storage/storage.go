@@ -3,14 +3,16 @@ package storage
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/models"
+	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type WafflerStorager interface {
 	CreateSource(*models.SourceDTO) error
 
 	CreateRecords(records []*models.RecordDTO) error
-	SearchByLikeSourceName(search string, offset int, limit int) ([]models.SourceDTO, error)
+	SearchByLikeSourceName(search string, cursor message.Cursor, order string, limit int) ([]models.SourceDTO, message.Cursor, error)
 	SearchBySourceUrl(url string) (*models.SourceDTO, error)
 	UpdateSource(*models.SourceDTO) error
 	CreateSourceAndRecords(source *telegram.DataTelegram) error
@@ -88,16 +90,46 @@ func (s WafflerStorage) CreateRecords(source []*models.RecordDTO) error {
 	return nil
 }
 
-func (s WafflerStorage) SearchByLikeSourceName(search string, offset int, limit int) ([]models.SourceDTO, error) {
-	sources := []models.SourceDTO{}
+func (s WafflerStorage) SearchByLikeSourceName(search string, cursor message.Cursor, order string, limit int) ([]models.SourceDTO, message.Cursor, error) {
+	var sources, sourcesURL, sourcesName []models.SourceDTO
+	var err error
+	searchSQL := strings.ToLower("%" + search + "%")
 
-	// пропустить первые 10, затем выбрать 5
-	err := s.conn.Offset(offset).Limit(limit).Where("name LIKE ?", search+"%").Find(&sources).Error
-	if err != nil {
-		return nil, err
+	if cursor.Partition == 0 {
+		sourcesName, cursor, limit, err = s.searchLikeSources("name ILIKE ?", cursor, limit, order, searchSQL)
+		if err != nil {
+			return nil, message.Cursor{}, err
+		}
+		sources = append(sources, sourcesName...)
+
 	}
 
-	return sources, nil
+	if cursor.Partition == 1 {
+		sourcesURL, cursor, _, err = s.searchLikeSources("source_url ILIKE ? and not name ILIKE ?", cursor, limit, order, searchSQL, searchSQL)
+		if err != nil {
+			return nil, message.Cursor{}, err
+		}
+		sources = append(sources, sourcesURL...)
+	}
+
+	return sources, cursor, nil
+}
+
+func (s WafflerStorage) searchLikeSources(query string, cursor message.Cursor, limit int, order string, arg ...interface{}) ([]models.SourceDTO, message.Cursor, int, error) {
+	var records []models.SourceDTO
+	resURL := s.conn.Order(order).Offset(cursor.Offset).Limit(limit).Where(query, arg...).Find(&records)
+	if resURL.Error != nil {
+		return nil, message.Cursor{}, 0, resURL.Error
+	}
+
+	cursor.Offset += int(resURL.RowsAffected)
+	limit -= int(resURL.RowsAffected)
+	if limit > 0 {
+		cursor.Offset = 0
+		cursor.Partition += 1
+	}
+
+	return records, cursor, limit, nil
 }
 
 func (s WafflerStorage) SearchBySourceUrl(url string) (*models.SourceDTO, error) {
@@ -117,7 +149,7 @@ func (s WafflerStorage) SearchBySourceUrl(url string) (*models.SourceDTO, error)
 }
 
 func (s WafflerStorage) SelectRecordsSourceID(idSource int) ([]*models.RecordDTO, error) {
-	records := []*models.RecordDTO{}
+	var records []*models.RecordDTO
 	err := s.conn.Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
 	if err != nil {
 		return nil, err
@@ -127,7 +159,7 @@ func (s WafflerStorage) SelectRecordsSourceID(idSource int) ([]*models.RecordDTO
 }
 
 func (s WafflerStorage) SelectRecordsSourceIDOffsetLimit(idSource int, offset int, limit int) ([]*models.RecordDTO, error) {
-	records := []*models.RecordDTO{}
+	var records []*models.RecordDTO
 	err := s.conn.Offset(offset).Limit(limit).Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
 	if err != nil {
 		return nil, err

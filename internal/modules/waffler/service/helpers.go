@@ -14,7 +14,7 @@ func updateScoreRecods(records []*models.RecordDTO, source *models.SourceDTO, da
 		typeScore = models.Racism
 	}
 
-	source.WaffelScore = countingScore(records, typeScore) / len(records)
+	source.WafflerScore = countingScore(records, typeScore) / len(records)
 
 }
 

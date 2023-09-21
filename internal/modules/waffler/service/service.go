@@ -32,7 +32,7 @@ func NewWafflerService(storage storage.WafflerStorager, components *component.Co
 }
 
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
-	records, err := u.storage.SelectRecordsSourceIDOffsetLimit(request.SourceId, request.Cursor, request.Limit)
+	records, err := u.storage.SelectRecordsSourceIDOffsetLimit(request.SourceId, request.Cursor.Offset, request.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 
 	scoreResponse.Records = sortRecords(recordsNew, request.Order)
 
-	scoreResponse.Cursor += len(scoreResponse.Records)
+	scoreResponse.Cursor.Offset += len(scoreResponse.Records)
 
 	return scoreResponse, nil
 }
@@ -221,62 +221,23 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 	return err
 }
 
+var orderSources = map[string]string{"name": "name ASC", "name_desc": "name DESC", "source": "source_type ASC", "source_desc": "source_type DESC",
+	"waffler": "waffler_score ASC", "waffler_desc": "waffler_score DESC", "racism": "racism_score ASC", "racism_desc": "racism_score DESC"}
+
 func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
-	source, err := s.storage.SearchByLikeSourceName(search.QueryForName, search.Cursor, search.Limit)
+	var source []models.SourceDTO
+	var err error
+
+	source, search.Cursor, err = s.storage.SearchByLikeSourceName(search.QueryForName, search.Cursor, orderSources[search.Order], search.Limit)
 	if err != nil {
 		s.log.Error("error: search", zap.Error(err))
 		return nil, err
 	}
 
-	sourceSort := sortSources(source, search.Order)
-	search.Cursor += len(sourceSort)
-
 	return &message.SearchResponse{
-		Sources: sourceSort,
+		Sources: source,
 		Cursor:  search.Cursor,
 	}, nil
-}
-
-func sortSources(sources []models.SourceDTO, search string) []models.SourceDTO {
-	var orderSources = []string{"name", "name_desc", "source", "source_desc",
-		"waffler", "waffler_desc", "racism", "racism_desc"}
-	switch search {
-	case orderSources[0]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].Name < sources[j].Name
-		})
-	case orderSources[1]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].Name > sources[j].Name
-		})
-	case orderSources[2]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].SourceType < sources[j].SourceType
-		})
-	case orderSources[3]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].SourceType > sources[j].SourceType
-		})
-	case orderSources[4]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].WaffelScore < sources[j].WaffelScore
-		})
-	case orderSources[5]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].WaffelScore > sources[j].WaffelScore
-		})
-	case orderSources[6]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].RacismScore < sources[j].RacismScore
-		})
-	case orderSources[7]:
-		sort.Slice(sources, func(i, j int) bool {
-			return sources[i].RacismScore > sources[j].RacismScore
-		})
-	}
-
-	return sources
-
 }
 
 func containsAlphabet(text string) bool {

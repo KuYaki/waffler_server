@@ -35,7 +35,12 @@ type ParserRequest struct {
 
 type SearchResponse struct {
 	Sources []models.SourceDTO `json:"sources"`
-	Cursor  int                `json:"cursor"`
+	Cursor  Cursor             `json:"cursor"`
+}
+
+type Cursor struct {
+	Offset    int `json:"offset"`
+	Partition int `json:"partition"`
 }
 
 type Source struct {
@@ -50,17 +55,41 @@ type ScoreRequest struct {
 	SourceId int              `json:"source_id"`
 	Type     models.ScoreType `json:"score_type"`
 	Limit    int              `json:"limit"`
-	Cursor   int              `json:"cursor"`
+	Cursor   Cursor           `json:"cursor"`
 	Order    string           `json:"order"`
 }
 
 type ScoreResponse struct {
 	Records []*Record `json:"records"`
-	Cursor  int       `json:"cursor"`
+	Cursor  Cursor    `json:"cursor"`
 }
 
 type Record struct {
 	RecordText string    `json:"record_text,omitempty"`
 	Score      int       `json:"score"`
 	Timestamp  time.Time `json:"timestamp"`
+}
+
+type User struct {
+	ID          int    `json:"id,omitempty"`
+	Username    string `json:"username,omitempty"`
+	Password    string `json:"password,omitempty"`
+	ParserToken string `json:"token_gpt,omitempty"`
+	ParserType  string `json:"parser_type,omitempty"`
+	Locale      string `json:"locale,omitempty"`
+}
+
+type Search struct {
+	QueryForName string              `json:"query"`
+	Limit        int                 `json:"limit"`
+	Cursor       Cursor              `json:"cursor"`
+	Order        string              `json:"order"`
+	SourceType   []models.SourceType `json:"source_type"`
+	ScoreType    []models.ScoreType  `json:"score_type"`
+}
+
+type SourceParse struct {
+	SourceURL string `json:"source_url"`
+	ScoreType string `json:"score_type"`
+	Parser    `json:"parser"`
 }
