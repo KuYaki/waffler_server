@@ -243,8 +243,9 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 		Cursor:  search.Cursor,
 	}
 
-	if len(source) == 0 {
+	if source == nil || len(source) == 0 {
 		res.Cursor = nil
+		res.Sources = []models.SourceDTO{}
 
 	}
 
