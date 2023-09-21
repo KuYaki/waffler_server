@@ -35,7 +35,7 @@ type ParserRequest struct {
 
 type SearchResponse struct {
 	Sources []models.SourceDTO `json:"sources"`
-	Cursor  Cursor             `json:"cursor"`
+	Cursor  *Cursor            `json:"cursor"`
 }
 
 type Cursor struct {
@@ -60,8 +60,8 @@ type ScoreRequest struct {
 }
 
 type ScoreResponse struct {
-	Records []*Record `json:"records"`
-	Cursor  Cursor    `json:"cursor"`
+	Records *[]Record `json:"records"`
+	Cursor  *Cursor   `json:"cursor"`
 }
 
 type Record struct {
@@ -82,7 +82,7 @@ type User struct {
 type Search struct {
 	QueryForName string              `json:"query"`
 	Limit        int                 `json:"limit"`
-	Cursor       Cursor              `json:"cursor"`
+	Cursor       *Cursor             `json:"cursor"`
 	Order        string              `json:"order"`
 	SourceType   []models.SourceType `json:"source_type"`
 	ScoreType    []models.ScoreType  `json:"score_type"`

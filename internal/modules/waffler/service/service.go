@@ -36,9 +36,9 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		return nil, err
 	}
 
-	recordsNew := make([]*message.Record, 0, len(records))
+	recordsNew := make([]message.Record, 0, len(records))
 	for i := range records {
-		recordsNew = append(recordsNew, &message.Record{
+		recordsNew = append(recordsNew, message.Record{
 			RecordText: records[i].RecordText,
 			Score:      records[i].Score,
 			Timestamp:  records[i].CreatedAt,
@@ -48,14 +48,20 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 
 	scoreResponse := &message.ScoreResponse{}
 
-	scoreResponse.Records = sortRecords(recordsNew, request.Order)
+	RecordsTEmp := sortRecords(recordsNew, request.Order)
 
-	scoreResponse.Cursor.Offset += len(scoreResponse.Records)
+	scoreResponse.Records = &RecordsTEmp
+	if RecordsTEmp == nil || len(RecordsTEmp) == 0 {
+		scoreResponse.Cursor = nil
+
+	} else {
+		scoreResponse.Cursor.Offset += len(RecordsTEmp)
+	}
 
 	return scoreResponse, nil
 }
 
-func sortRecords(records []*message.Record, order string) []*message.Record {
+func sortRecords(records []message.Record, order string) []message.Record {
 	var orderRecords = []string{"record_text", "record_text_desc", "score", "score_desc",
 		"time", "time_desc"}
 	switch order {
@@ -226,16 +232,23 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	var source []models.SourceDTO
 	var err error
 
-	source, search.Cursor, err = s.storage.SearchByLikeSourceName(search.QueryForName, search.Cursor, orderSources[search.Order], search.Limit)
+	source, search.Cursor, err = s.storage.SearchByLikeSourceName(search.QueryForName, *search.Cursor, orderSources[search.Order], search.Limit)
 	if err != nil {
 		s.log.Error("error: search", zap.Error(err))
 		return nil, err
 	}
 
-	return &message.SearchResponse{
+	res := &message.SearchResponse{
 		Sources: source,
 		Cursor:  search.Cursor,
-	}, nil
+	}
+
+	if len(source) == 0 {
+		res.Cursor = nil
+
+	}
+
+	return res, nil
 }
 
 func containsAlphabet(text string) bool {
