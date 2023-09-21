@@ -1,7 +1,6 @@
 package message
 
 import (
-	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"time"
 )
@@ -28,10 +27,10 @@ type SourceURL struct {
 }
 
 type ParserRequest struct {
-	SourceURL string            `json:"source_url"`
-	ScoreType gpt.AnswerTypeGPT `json:"score_type"`
-	Parser    *Parser           `json:"parser"`
-	ClientID  string            `json:"client_id"`
+	SourceURL string           `json:"source_url"`
+	ScoreType models.ScoreType `json:"score_type"`
+	Parser    *Parser          `json:"parser"`
+	ClientID  string           `json:"client_id"`
 }
 
 type SearchResponse struct {
