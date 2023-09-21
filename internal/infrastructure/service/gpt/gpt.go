@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/sashabaranov/go-openai"
 	"regexp"
 	"strconv"
@@ -20,21 +21,14 @@ func NewChatGPT(token string) *ChatGPT {
 	}
 }
 
-type AnswerTypeGPT int
-
-const (
-	RacismGPT AnswerTypeGPT = iota
-	SexismGPT
-)
-
 const answerGPTRacism = `Не пиши ничего кроме дробного числа - доля расизма в субъективной оценке гипотетического оценщик, если не уверен пиши 0.5. Оцени долю расизма следующего высказывания:`
 
-func (g *ChatGPT) ConstructQuestionGPT(mess string, typeAnswer AnswerTypeGPT) (int, error) {
+func (g *ChatGPT) ConstructQuestionGPT(mess string, typeAnswer models.ScoreType) (int, error) {
 	var answerGPT *openai.ChatCompletionResponse
 	var err error
 	switch typeAnswer {
 
-	case RacismGPT:
+	case models.Racism:
 		answerGPT, err = g.questionForGPT(answerGPTRacism + " " + mess)
 
 	default:

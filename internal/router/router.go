@@ -11,8 +11,6 @@ import (
 
 func NewApiRouter(controllers *modules.Controllers, components *component.Components) *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(cors.AllowAll().Handler)
 	r.Use(middleware.Recoverer)
