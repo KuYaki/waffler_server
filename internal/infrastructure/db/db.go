@@ -57,11 +57,11 @@ func TestDB(conn *gorm.DB) error {
 	if result.RowsAffected == 0 {
 		for i := 0; i < 100; i++ {
 			sourceNew := &models.SourceDTO{
-				Name:        gofakeit.BeerName(),
-				SourceType:  0,
-				SourceUrl:   gofakeit.URL(),
-				WaffelScore: gofakeit.Number(0, 10),
-				RacismScore: gofakeit.Number(0, 10),
+				Name:         gofakeit.BeerName(),
+				SourceType:   0,
+				SourceUrl:    gofakeit.URL(),
+				WafflerScore: gofakeit.Number(0, 10),
+				RacismScore:  gofakeit.Number(0, 10),
 			}
 			result = conn.Create(sourceNew)
 			if result.Error != nil {

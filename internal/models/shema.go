@@ -15,12 +15,12 @@ type UserDTO struct {
 }
 
 type SourceDTO struct {
-	ID          int        `json:"id,omitempty" gorm:"primaryKey"`
-	Name        string     `json:"name"`
-	SourceType  SourceType `json:"source_type"`
-	SourceUrl   string     `json:"source_url"`
-	WaffelScore int        `json:"waffler_score"`
-	RacismScore int        `json:"racism_score"`
+	ID           int        `json:"id,omitempty" gorm:"primaryKey"`
+	Name         string     `json:"name"`
+	SourceType   SourceType `json:"source_type"`
+	SourceUrl    string     `json:"source_url"`
+	WafflerScore int        `json:"waffler_score"`
+	RacismScore  int        `json:"racism_score"`
 }
 
 type RecordDTO struct {
