@@ -57,8 +57,8 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 }
 
 func sortRecords(records []*message.Record, order string) []*message.Record {
-	var orderRecords = []string{"record_text_up", "record_text_down", "score_up", "score_down",
-		"time_up", "time_down"}
+	var orderRecords = []string{"record_text", "record_text_desc", "score", "score_desc",
+		"time", "time_desc"}
 	switch order {
 	case orderRecords[0]:
 		sort.Slice(records, func(i, j int) bool {
@@ -238,8 +238,8 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 }
 
 func sortSources(sources []models.SourceDTO, search string) []models.SourceDTO {
-	var orderSources = []string{"name_up", "name_down", "source_up", "source_down",
-		"waffler_up", "waffler_down", "racism_up", "racism_down"}
+	var orderSources = []string{"name", "name_desc", "source", "source_desc",
+		"waffler", "waffler_desc", "racism", "racism_desc"}
 	switch search {
 	case orderSources[0]:
 		sort.Slice(sources, func(i, j int) bool {
