@@ -4,30 +4,14 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"net/http"
 )
 
 func NewApiRouter(controllers *modules.Controllers, components *component.Components) *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{
-			http.MethodHead,
-			http.MethodGet,
-			http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete,
-			http.MethodOptions,
-			http.MethodConnect,
-			http.MethodTrace,
-		},
-		AllowedHeaders:     []string{"*"},
-		AllowCredentials:   true,
-		OptionsPassthrough: true,
-		Debug:              true,
-	}))
+	r.Use(cors.AllowAll().Handler)
+	r.Use(middleware.Recoverer) //  ToDO: Need?
 
 	r.Get("/", controllers.Waffler.Hello)
 	authCheck := components.Token
