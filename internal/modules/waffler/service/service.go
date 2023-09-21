@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	tg "github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
@@ -151,7 +150,6 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 		}
 
 		g.Go(func() error {
-			fmt.Println("start")
 			var err error
 			res, err := chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
 			if err != nil {
