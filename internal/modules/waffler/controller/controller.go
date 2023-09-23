@@ -26,7 +26,7 @@ type Waffler interface {
 }
 
 type Waffl struct {
-	service     service.Waffler
+	service     service.WafflerServicer
 	log         *zap.Logger
 	token       *middleware.Token
 	userService service2.Userer
@@ -34,7 +34,7 @@ type Waffl struct {
 	godecoder.Decoder
 }
 
-func NewWaffl(service service.Waffler, user service2.Userer, components *component.Components) Waffler {
+func NewWaffl(service service.WafflerServicer, user service2.Userer, components *component.Components) Waffler {
 	return &Waffl{service: service,
 		log: components.Logger, token: components.Token, userService: user, Responder: components.Responder, Decoder: components.Decoder}
 }

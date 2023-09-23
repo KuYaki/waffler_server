@@ -11,7 +11,7 @@ import (
 type Services struct {
 	User         uservice.Userer
 	Auth         aservice.Auther
-	WafflService service.Waffler
+	WafflService service.WafflerServicer
 }
 
 func NewServices(storages *storages.Storages, components *component.Components) *Services {

@@ -13,7 +13,7 @@ import (
 	"unicode"
 )
 
-type Waffler interface {
+type WafflerServicer interface {
 	Search(search *message.Search) (*message.SearchResponse, error)
 	InfoSource(domain string) *message.InfoRequest
 	Score(request *message.ScoreRequest) (*message.ScoreResponse, error)
@@ -232,7 +232,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	var source []models.SourceDTO
 	var err error
 
-	source, search.Cursor, err = s.storage.SearchByLikeSourceName(search.QueryForName, *search.Cursor, orderSources[search.Order], search.Limit)
+	source, search.Cursor, err = s.storage.SearchLikeBySourceName(search.QueryForName, search.Cursor, orderSources[search.Order], search.Limit)
 	if err != nil {
 		s.log.Error("error: search", zap.Error(err))
 		return nil, err
@@ -241,12 +241,6 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	res := &message.SearchResponse{
 		Sources: source,
 		Cursor:  search.Cursor,
-	}
-
-	if source == nil || len(source) == 0 {
-		res.Cursor = nil
-		res.Sources = []models.SourceDTO{}
-
 	}
 
 	return res, nil
