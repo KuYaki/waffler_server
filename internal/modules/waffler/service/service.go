@@ -9,7 +9,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/storage"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"sort"
 	"unicode"
 )
 
@@ -30,69 +29,38 @@ func NewWafflerService(storage storage.WafflerStorager, components *component.Co
 	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg}
 }
 
+var orderRecords = map[string]string{"record_text": "record_text ASC", "record_text_desc": "record_text DESC", "score": "score ASC", "score_desc": "score DESC",
+	"time": "created_at ASC", "time_desc": "created_at DESC"}
+
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
-	records, err := u.storage.SelectRecordsSourceIDOffsetLimit(request.SourceId, request.Cursor.Offset, request.Limit)
+	scoreResponse := &message.ScoreResponse{
+		Cursor: &message.Cursor{
+			Offset: request.Cursor.Offset,
+		},
+		Records: []message.Record{},
+	}
+	records, err := u.storage.SelectRecordsSourceIDOffsetLimit(request.SourceId, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
 	if err != nil {
 		return nil, err
 	}
 
-	recordsNew := make([]message.Record, 0, len(records))
-	for i := range records {
-		recordsNew = append(recordsNew, message.Record{
-			RecordText: records[i].RecordText,
-			Score:      records[i].Score,
-			Timestamp:  records[i].CreatedAt,
-		})
-
-	}
-
-	scoreResponse := &message.ScoreResponse{}
-
-	RecordsTEmp := sortRecords(recordsNew, request.Order)
-
-	scoreResponse.Records = &RecordsTEmp
-	if RecordsTEmp == nil || len(RecordsTEmp) == 0 {
+	if len(records) == 0 {
 		scoreResponse.Cursor = nil
 
 	} else {
-		scoreResponse.Cursor.Offset += len(RecordsTEmp)
+		scoreResponse.Cursor.Offset += len(records)
+
+		scoreResponse.Records = make([]message.Record, len(records))
+		for i := range records {
+			scoreResponse.Records = append(scoreResponse.Records, message.Record{
+				RecordText: records[i].RecordText,
+				Score:      records[i].Score,
+				Timestamp:  records[i].CreatedAt,
+			})
+		}
 	}
 
 	return scoreResponse, nil
-}
-
-func sortRecords(records []message.Record, order string) []message.Record {
-	var orderRecords = []string{"record_text", "record_text_desc", "score", "score_desc",
-		"time", "time_desc"}
-	switch order {
-	case orderRecords[0]:
-		sort.Slice(records, func(i, j int) bool {
-			return records[i].RecordText < records[j].RecordText
-		})
-	case orderRecords[1]:
-		sort.Slice(records, func(i, j int) bool {
-			return records[i].RecordText > records[j].RecordText
-		})
-	case orderRecords[2]:
-		sort.Slice(records, func(i, j int) bool {
-			return records[i].Score < records[j].Score
-		})
-	case orderRecords[3]:
-		sort.Slice(records, func(i, j int) bool {
-			return records[i].Score > records[j].Score
-		})
-	case orderRecords[4]:
-		sort.Slice(records, func(i, j int) bool {
-			return records[i].Timestamp.Before(records[j].Timestamp)
-		})
-	case orderRecords[5]:
-		sort.Slice(records, func(i, j int) bool {
-			return records[i].Timestamp.After(records[j].Timestamp)
-		})
-
-	}
-
-	return records
 }
 
 func (u *WafflerService) InfoSource(domain string) *message.InfoRequest {

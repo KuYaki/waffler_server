@@ -60,8 +60,8 @@ type ScoreRequest struct {
 }
 
 type ScoreResponse struct {
-	Records *[]Record `json:"records"`
-	Cursor  *Cursor   `json:"cursor"`
+	Records []Record `json:"records"`
+	Cursor  *Cursor  `json:"cursor"`
 }
 
 type Record struct {

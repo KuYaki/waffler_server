@@ -17,7 +17,7 @@ type WafflerStorager interface {
 	UpdateSource(*models.SourceDTO) error
 	CreateSourceAndRecords(source *telegram.DataTelegram) error
 	SelectRecordsSourceID(idSource int) ([]*models.RecordDTO, error)
-	SelectRecordsSourceIDOffsetLimit(idSource int, offset int, limit int) ([]models.RecordDTO, error)
+	SelectRecordsSourceIDOffsetLimit(idSource int, order string, offset int, limit int) ([]models.RecordDTO, error)
 }
 
 func NewWafflerStorage(conn *gorm.DB) WafflerStorager {
@@ -155,9 +155,9 @@ func (s WafflerStorage) SelectRecordsSourceID(idSource int) ([]*models.RecordDTO
 	return records, nil
 }
 
-func (s WafflerStorage) SelectRecordsSourceIDOffsetLimit(idSource int, offset int, limit int) ([]models.RecordDTO, error) {
+func (s WafflerStorage) SelectRecordsSourceIDOffsetLimit(idSource int, order string, offset int, limit int) ([]models.RecordDTO, error) {
 	var records []models.RecordDTO
-	err := s.conn.Offset(offset).Limit(limit).Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
+	err := s.conn.Order(order).Offset(offset).Limit(limit).Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
 	if err != nil {
 		return nil, err
 	}
