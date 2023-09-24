@@ -39,7 +39,8 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		},
 		Records: []message.Record{},
 	}
-	records, err := u.storage.SelectRecordsSourceIDOffsetLimit(request.SourceId, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
+	records, err := u.storage.
+		SelectRecordsSourceIDOffsetLimit(request.SourceId, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 	} else {
 		scoreResponse.Cursor.Offset += len(records)
 
-		scoreResponse.Records = make([]message.Record, len(records))
+		scoreResponse.Records = make([]message.Record, 0, len(records))
 		for i := range records {
 			scoreResponse.Records = append(scoreResponse.Records, message.Record{
 				RecordText: records[i].RecordText,
