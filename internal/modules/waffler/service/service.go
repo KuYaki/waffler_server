@@ -194,7 +194,9 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 }
 
 var orderSources = map[string]string{"name": "name ASC", "name_desc": "name DESC", "source": "source_type ASC", "source_desc": "source_type DESC",
-	"waffler": "waffler_score ASC", "waffler_desc": "waffler_score DESC", "racism": "racism_score ASC", "racism_desc": "racism_score DESC"}
+	"waffler": "waffler_score ASC", "waffler_desc": "waffler_score DESC", "racizm": "racism_score ASC", "racizm_desc": "racism_score DESC"}
+
+//  ToDo: racizm rename to racism
 
 func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
 	res := &message.SearchResponse{
