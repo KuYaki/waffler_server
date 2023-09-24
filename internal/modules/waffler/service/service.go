@@ -128,7 +128,6 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 			res, err := chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
 			if err != nil {
 				s.log.Warn("error: search", zap.Error(err))
-				return err
 			} else {
 				dataTelegram.Records[tempIndexRecords].Score = res
 			}
