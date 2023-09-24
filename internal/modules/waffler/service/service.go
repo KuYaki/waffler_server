@@ -197,19 +197,46 @@ var orderSources = map[string]string{"name": "name ASC", "name_desc": "name DESC
 	"waffler": "waffler_score ASC", "waffler_desc": "waffler_score DESC", "racism": "racism_score ASC", "racism_desc": "racism_score DESC"}
 
 func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
-	var source []models.SourceDTO
+	res := &message.SearchResponse{
+		Sources: make([]models.SourceDTO, 0, search.Limit),
+	}
 	var err error
 
-	source, search.Cursor, err = s.storage.SearchLikeBySourceName(search.QueryForName, search.Cursor, orderSources[search.Order], search.Limit)
-	if err != nil {
-		s.log.Error("error: search", zap.Error(err))
-		return nil, err
+	if search.Cursor.Partition == 0 {
+		res.Sources, err = s.storage.
+			SearchLikeBySourceName(search.QueryForName, search.SourceType, search.Cursor.Offset, orderSources[search.Order], search.Limit)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(res.Sources) == search.Limit {
+			search.Cursor.Offset += len(res.Sources)
+		} else {
+			search.Cursor.Partition = 1
+			search.Limit -= len(res.Sources)
+			search.Cursor.Offset = 0
+		}
+
 	}
 
-	res := &message.SearchResponse{
-		Sources: source,
-		Cursor:  search.Cursor,
+	if search.Cursor.Partition == 1 {
+		resURL, err := s.storage.
+			SearchLikeBySourceURLNotName(search.QueryForName, search.SourceType, search.Cursor.Offset, orderSources[search.Order], search.Limit)
+		if err != nil {
+			return nil, err
+		}
+
+		res.Sources = append(res.Sources, resURL...)
+
+		if len(resURL) == search.Limit {
+			search.Cursor.Offset += len(resURL)
+		} else {
+			search.Cursor = nil
+		}
 	}
+
+	res.Cursor = search.Cursor
 
 	return res, nil
 }

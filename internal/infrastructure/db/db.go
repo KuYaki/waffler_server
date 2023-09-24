@@ -58,7 +58,7 @@ func TestDB(conn *gorm.DB) error {
 		for i := 0; i < 100; i++ {
 			sourceNew := &models.SourceDTO{
 				Name:         gofakeit.BeerName(),
-				SourceType:   0,
+				SourceType:   models.SourceType(gofakeit.Number(0, 1)),
 				SourceUrl:    gofakeit.URL(),
 				WafflerScore: gofakeit.Number(0, 10),
 				RacismScore:  gofakeit.Number(0, 10),

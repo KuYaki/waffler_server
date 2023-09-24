@@ -3,7 +3,6 @@ package storage
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/models"
-	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"gorm.io/gorm"
 	"strings"
 )
@@ -12,7 +11,8 @@ type WafflerStorager interface {
 	CreateSource(*models.SourceDTO) error
 
 	CreateRecords(records []*models.RecordDTO) error
-	SearchLikeBySourceName(search string, cursor *message.Cursor, order string, limit int) ([]models.SourceDTO, *message.Cursor, error)
+	SearchLikeBySourceURLNotName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error)
+	SearchLikeBySourceName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error)
 	SearchBySourceUrl(url string) (*models.SourceDTO, error)
 	UpdateSource(*models.SourceDTO) error
 	CreateSourceAndRecords(source *telegram.DataTelegram) error
@@ -89,44 +89,50 @@ func (s WafflerStorage) CreateRecords(source []*models.RecordDTO) error {
 
 	return nil
 }
-
-func (s WafflerStorage) SearchLikeBySourceName(search string, cursor *message.Cursor, order string, limit int) ([]models.SourceDTO, *message.Cursor, error) {
-	var sources, sourcesURL []models.SourceDTO
-	var searchSQL = strings.ToLower("%" + search + "%")
-
-	if cursor.Partition == 0 {
-		resName := s.conn.Order(order).Offset(cursor.Offset).Limit(limit).
-			Where("name ILIKE ?", searchSQL).Find(&sources)
-		if resName.Error != nil {
-			return nil, nil, resName.Error
-		}
-
-		if int(resName.RowsAffected) == limit {
-			cursor.Offset += int(resName.RowsAffected)
-		} else {
-			cursor.Partition = 1
-			limit -= int(resName.RowsAffected)
-			cursor.Offset = 0
-		}
+func (s WafflerStorage) SearchLikeBySourceName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error) {
+	var sources []models.SourceDTO
+	var querySQL string
+	var args = make([]interface{}, 0, len(sourceType)+1)
+	args = append(args, strings.ToLower("%"+search+"%"))
+	if len(sourceType) == 1 {
+		querySQL = "name ILIKE ? AND source_type = ?"
+		args = append(args, sourceType[0])
+	} else if len(sourceType) == 2 {
+		querySQL = "name ILIKE ? AND (source_type = ? OR source_type = ?)"
+		args = append(args, sourceType[0], sourceType[1])
 	}
 
-	if cursor.Partition == 1 {
-		resURL := s.conn.Order(order).Offset(cursor.Offset).Limit(limit).
-			Where("source_url ILIKE ? and not name ILIKE ?", searchSQL, searchSQL).Find(&sourcesURL)
-		if resURL.Error != nil {
-			return nil, nil, resURL.Error
-		}
-		sources = append(sources, sourcesURL...)
-
-		if int(resURL.RowsAffected) == limit {
-			cursor.Offset += int(resURL.RowsAffected)
-		} else {
-			cursor = nil
-		}
-
+	resName := s.conn.Order(order).Offset(offset).Limit(limit).
+		Where(querySQL, args...).Find(&sources)
+	if resName.Error != nil {
+		return nil, resName.Error
 	}
 
-	return sources, cursor, nil
+	return sources, nil
+}
+
+func (s WafflerStorage) SearchLikeBySourceURLNotName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error) {
+	var sources []models.SourceDTO
+	var querySQL string
+	var args = make([]interface{}, 0, len(sourceType)+2)
+	searchSQL := strings.ToLower("%" + search + "%")
+	args = append(args, searchSQL, searchSQL)
+	if len(sourceType) == 1 {
+		querySQL = "source_url ILIKE ? AND not name ILIKE ? AND source_type = ?"
+		args = append(args, sourceType[0])
+	} else if len(sourceType) == 2 {
+		querySQL = "source_url ILIKE ? AND not name ILIKE ? AND (source_type = ? OR source_type = ?)"
+		args = append(args, sourceType[0], sourceType[1])
+	}
+
+	err := s.conn.Order(order).Offset(offset).Limit(limit).
+		Where(querySQL, searchSQL, searchSQL, sourceType).
+		Find(&sources).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return sources, nil
 }
 
 func (s WafflerStorage) SearchBySourceUrl(url string) (*models.SourceDTO, error) {
