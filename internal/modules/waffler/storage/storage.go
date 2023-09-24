@@ -102,10 +102,10 @@ func (s WafflerStorage) SearchLikeBySourceName(search string, sourceType []model
 		args = append(args, sourceType[0], sourceType[1])
 	}
 
-	resName := s.conn.Order(order).Offset(offset).Limit(limit).
-		Where(querySQL, args...).Find(&sources)
-	if resName.Error != nil {
-		return nil, resName.Error
+	err := s.conn.Order(order).Offset(offset).Limit(limit).
+		Where(querySQL, args...).Find(&sources).Error
+	if err != nil {
+		return nil, err
 	}
 
 	return sources, nil
@@ -126,7 +126,7 @@ func (s WafflerStorage) SearchLikeBySourceURLNotName(search string, sourceType [
 	}
 
 	err := s.conn.Order(order).Offset(offset).Limit(limit).
-		Where(querySQL, searchSQL, searchSQL, sourceType).
+		Where(querySQL, args...).
 		Find(&sources).Error
 	if err != nil {
 		return nil, err
