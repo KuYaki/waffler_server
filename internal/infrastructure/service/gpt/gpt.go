@@ -6,41 +6,52 @@ import (
 	"fmt"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/sashabaranov/go-openai"
+	"go.uber.org/zap"
 	"regexp"
 	"strconv"
 )
 
 type ChatGPT struct {
 	gpt *openai.Client
+	log *zap.Logger
 }
 
-func NewChatGPT(token string) *ChatGPT {
+func NewChatGPT(token string, log *zap.Logger) *ChatGPT {
 	client := openai.NewClient(token)
 	return &ChatGPT{
 		gpt: client,
+		log: log,
 	}
 }
 
 const answerGPTRacism = `Не пиши ничего кроме дробного числа - доля расизма в субъективной оценке гипотетического оценщик, если не уверен пиши 0.5. Оцени долю расизма следующего высказывания:`
 
-func (g *ChatGPT) ConstructQuestionGPT(mess string, typeAnswer models.ScoreType) (int, error) {
+func (g *ChatGPT) ConstructQuestionGPT(mess string, typeAnswer models.ScoreType) (*int, error) {
 	var answerGPT *openai.ChatCompletionResponse
-	var err error
+	var err, errWarn error
 	switch typeAnswer {
 
 	case models.Racism:
-		answerGPT, err = g.questionForGPT(answerGPTRacism + " " + mess)
+		answerGPT, errWarn = g.questionForGPT(answerGPTRacism + " " + mess)
+		if errWarn != nil {
+			g.log.Warn("error: questionForGPT", zap.Error(errWarn))
+			return nil, nil
+		}
 
 	default:
-		answerGPT, err = nil, errors.New(fmt.Sprintf("error: unknown type mess %v", typeAnswer))
+		answerGPT, err = nil, errors.New(fmt.Sprintf("error: unknown score type %v", typeAnswer))
 	}
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	score, err := parseAnswerGPT(answerGPT.Choices[0].Message.Content)
+	score, errWarn := parseAnswerGPT(answerGPT.Choices[0].Message.Content)
+	if errWarn != nil {
+		g.log.Warn("error: questionForGPT", zap.Error(errWarn))
+		return nil, nil
+	}
 
-	return score, err
+	return &score, nil
 }
 
 func parseAnswerGPT(answer string) (int, error) {
@@ -61,6 +72,10 @@ func parseAnswerGPT(answer string) (int, error) {
 	}
 	if !find {
 		return 0, errors.New("error: parseAnswerGPT" + answer)
+	}
+	if resRaw == "0" {
+		return 0, nil
+
 	}
 
 	var result int

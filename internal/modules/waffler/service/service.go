@@ -80,7 +80,7 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 	if err != nil {
 		s.log.Error("search", zap.Error(err))
 	}
-	chatGPT := gpt.NewChatGPT(search.Parser.Token)
+	chatGPT := gpt.NewChatGPT(search.Parser.Token, s.log)
 
 	records := make([]*models.RecordDTO, 0, 1)
 	source, err := s.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
@@ -101,16 +101,15 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 	var indexNewRecords = -1
 	newRecords := make([]*models.RecordDTO, 0, len(dataTelegram.Records))
 	for _, r := range dataTelegram.Records {
+		indexNewRecords++
 		if !containsAlphabet(r.RecordText) {
 			continue
 		}
-		indexNewRecords++
-		newRecords = append(newRecords, r)
 		tempIndexRecords := indexNewRecords
 
 		existText := false
 		if len(records) != 0 {
-			for _, record := range records {
+			for _, record := range records { //  ToDo: optimize
 				if record.RecordText == r.RecordText {
 					r.RecordText = record.RecordText
 					existText = true
@@ -126,18 +125,24 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 		g.Go(func() error {
 			var err error
 			res, err := chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
-			if err != nil {
-				s.log.Warn("error: search", zap.Error(err))
-			} else {
-				dataTelegram.Records[tempIndexRecords].Score = res
+			if res != nil {
+				err = nil
+				dataTelegram.Records[tempIndexRecords].Score = *res
+				newRecords = append(newRecords, dataTelegram.Records[tempIndexRecords])
+				return nil
 			}
+			if err != nil {
+				s.log.Error("error: search", zap.Error(err))
+				return err
+			}
+
 			return nil
 		})
 
 	}
-	errWarn := g.Wait()
-	if errWarn != nil {
-		s.log.Warn("error: search", zap.Error(errWarn))
+	err = g.Wait()
+	if err != nil {
+		s.log.Warn("error: search", zap.Error(err))
 		return err
 	}
 
