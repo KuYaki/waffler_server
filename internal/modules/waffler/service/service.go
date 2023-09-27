@@ -40,7 +40,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		Records: []message.Record{},
 	}
 	records, err := u.storage.
-		SelectRecordsSourceIDOffsetLimit(request.SourceId, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
+		SelectRecordsSourceIDOffsetLimit(request.SourceId, request.Type, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
 	if err != nil {
 		return nil, err
 	}
