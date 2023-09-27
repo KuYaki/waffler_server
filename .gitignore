@@ -2,3 +2,4 @@
 .idea
 push_docker_hub.sh
 telegram_sessions
+app.log

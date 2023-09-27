@@ -4,6 +4,7 @@ import (
 	"github.com/KuYaki/waffler_server/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"os"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 	Fatal  = "fatal"
 )
 
-func NewLogger(conf config.AppConf, sync zapcore.WriteSyncer) *zap.Logger {
+func NewLogger(conf config.AppConf) (*zap.Logger, error) {
 	levels := map[string]zapcore.Level{
 		Debug:  zapcore.DebugLevel,
 		Info:   zapcore.InfoLevel,
@@ -34,13 +35,25 @@ func NewLogger(conf config.AppConf, sync zapcore.WriteSyncer) *zap.Logger {
 	zapConf.EncoderConfig.EncodeDuration = zapcore.SecondsDurationEncoder
 	atom := zap.NewAtomicLevelAt(levels[conf.Logger.Level])
 	zapConf.Level = atom
-	core := zapcore.NewCore(
+
+	logFile, err := createLogFileIfNotExists(conf.Logger.LogPath)
+	if err != nil {
+		return nil, err
+	}
+
+	fileCore := zapcore.NewCore(
 		zapcore.NewJSONEncoder(zapConf.EncoderConfig),
-		sync,
+		zapcore.AddSync(logFile),
 		atom,
 	)
 
-	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+	consoleCore := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zapConf.EncoderConfig),
+		os.Stdout,
+		atom,
+	)
 
-	return logger.Named(conf.AppName)
+	logger := zap.New(zapcore.NewTee(fileCore, consoleCore), zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+
+	return logger.Named(conf.AppName), nil
 }

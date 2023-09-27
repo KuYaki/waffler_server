@@ -20,7 +20,10 @@ func main() {
 	conf := config.NewAppConf()
 
 	// create logger
-	logger := logs.NewLogger(conf, os.Stdout)
+	logger, err := logs.NewLogger(conf)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	conf.Init(logger)
 

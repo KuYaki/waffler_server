@@ -45,7 +45,8 @@ type Token struct {
 }
 
 type Logger struct {
-	Level string `yaml:"level"`
+	Level   string `yaml:"level"`
+	LogPath string `yaml:"log_file"`
 }
 
 type Server struct {
@@ -58,7 +59,8 @@ func NewAppConf() AppConf {
 		AppName: os.Getenv("APP_NAME"),
 		TestApp: getBool("TEST_APP"),
 		Logger: &Logger{
-			Level: os.Getenv("LOG_LEVEL"),
+			Level:   os.Getenv("LOG_LEVEL"),
+			LogPath: os.Getenv("LOG_PATH"),
 		},
 		Server: &Server{
 			Port: os.Getenv("SERVER_PORT"),
