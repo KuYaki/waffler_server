@@ -13,7 +13,6 @@ import (
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
 	"net/http"
-	"net/url"
 )
 
 type Waffler interface {
@@ -118,15 +117,9 @@ func (wa *Waffl) Info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := url.Parse(sourceURL.SourceUrl)
+	info, err := wa.service.InfoSource(sourceURL.SourceUrl)
 	if err != nil {
 		wa.Responder.ErrorInternal(w, err)
-		return
-	}
-
-	info := wa.service.InfoSource(u.Hostname())
-	if info == nil {
-		wa.Responder.ErrorBadRequest(w, err)
 		return
 	}
 

@@ -9,12 +9,13 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/storage"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"net/url"
 	"unicode"
 )
 
 type WafflerServicer interface {
 	Search(search *message.Search) (*message.SearchResponse, error)
-	InfoSource(domain string) *message.InfoRequest
+	InfoSource(urlSearch string) (*message.InfoRequest, error)
 	Score(request *message.ScoreRequest) (*message.ScoreResponse, error)
 	ParseSource(search *message.ParserRequest) error
 }
@@ -64,16 +65,27 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 	return scoreResponse, nil
 }
 
-func (u *WafflerService) InfoSource(domain string) *message.InfoRequest {
+func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, error) {
 	res := &message.InfoRequest{}
-	switch domain {
 
-	case "t.me":
-		res.Name = "Telegram"
-		res.Type = models.Telegram
-		return res
+	urlParse, err := url.Parse(urlSearch)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+
+	switch urlParse.Host {
+	case "t.me":
+		channel, err := u.tg.ContactSearch(urlSearch)
+		if err != nil {
+			u.log.Error("error: search", zap.Error(err))
+			return nil, err
+		}
+
+		res.Name = channel.Title
+		res.Type = models.Telegram
+	}
+
+	return res, nil
 }
 
 func (s *WafflerService) ParseSource(search *message.ParserRequest) error {

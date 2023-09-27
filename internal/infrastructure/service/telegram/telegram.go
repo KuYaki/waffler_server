@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/KuYaki/waffler_server/internal/models"
@@ -17,7 +18,10 @@ type Telegram struct {
 	Client *tg2.Client
 }
 
-const maxParseOnse = 100
+const (
+	maxParseOnse       = 100
+	limitContactSearch = 100
+)
 
 func NewTelegram(conf *config.Telegram) (*Telegram, error) {
 	clientType := tgpro.ClientType{
@@ -64,24 +68,57 @@ type MessageData struct {
 	TimeMessage time.Time
 }
 
-func (t *Telegram) ParseChatTelegram(query string, limit int) (*DataTelegram, error) {
+func (t *Telegram) ContactSearch(query string) (*tg2.Channel, error) {
 	f, err := t.Client.ContactsSearch(context.Background(), &tg2.ContactsSearchRequest{
 		Q:     query,
-		Limit: limit,
+		Limit: limitContactSearch,
 	})
 	if err != nil {
-		log.Fatalln("failed to get contacts:", err)
+		return nil, err
 	}
+	urlSplit := strings.Split(query, "/")
 
-	targetUsername := strings.Split(query, "/")
+	usernameTarget := urlSplit[len(urlSplit)-1]
 
-	username := targetUsername[len(targetUsername)-1]
 	var channel *tg2.Channel
-	for _, chat := range f.GetChats() {
+	var found bool
+
+	chats := f.GetChats()
+	for _, chat := range chats {
 		channel = chat.(*tg2.Channel)
-		if channel.Username == username {
+		if channel.Username == usernameTarget {
+			found = true
+		}
+		if found {
 			break
 		}
+
+	}
+
+	if !found {
+		for _, chat := range chats {
+			channel = chat.(*tg2.Channel)
+			if strings.Contains(channel.Username, usernameTarget) {
+				found = true
+			}
+			if found {
+				break
+			}
+
+		}
+	}
+
+	if !found {
+		return nil, errors.New("not found")
+	}
+
+	return channel, nil
+}
+
+func (t *Telegram) ParseChatTelegram(query string, limit int) (*DataTelegram, error) {
+	channel, err := t.ContactSearch(query)
+	if err != nil {
+		return nil, err
 	}
 
 	dataTg := &DataTelegram{
