@@ -24,20 +24,21 @@ type UserService struct {
 }
 
 func (u *UserService) GetUserInfo(ctx context.Context, id int) (*message.UserInfo, error) {
-	userInfo := message.UserInfo{}
 	user, err := u.storage.GetByID(ctx, id)
 	if err != nil {
 		u.logger.Error("user: GetByID err", zap.Error(err))
 		return nil, err
 	}
 
-	userInfo.Parser = message.Parser{
-		Type:  user.ParserType.String,
-		Token: user.ParserToken.String,
+	userInfo := &message.UserInfo{
+		Parser: message.Parser{
+			Type:  user.ParserType.String,
+			Token: user.ParserToken.String,
+		},
+		Locale: user.Locale.String,
 	}
-	userInfo.Locale = user.Locale.String
 
-	return &userInfo, err
+	return userInfo, err
 
 }
 func (u *UserService) GetByLogin(ctx context.Context, username string) (*models.UserDTO, error) {

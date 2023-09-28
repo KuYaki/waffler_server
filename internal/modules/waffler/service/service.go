@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	tg "github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
@@ -88,24 +87,23 @@ func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, err
 	return res, nil
 }
 
-func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
-	dataTelegram, err := s.tg.ParseChatTelegram(search.SourceURL, 20) // TODO: search.Limit
+func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
+	dataTelegram, err := w.tg.ParseChatTelegram(search.SourceURL, 20) // TODO: search.Limit
 	if err != nil {
-		s.log.Error("search", zap.Error(err))
+		w.log.Error("search", zap.Error(err))
 	}
-	chatGPT := gpt.NewChatGPT(search.Parser.Token, s.log)
 
 	records := make([]*models.RecordDTO, 0, 1)
-	source, err := s.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+	source, err := w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
 	if err != nil {
-		s.log.Error("error: search", zap.Error(err))
+		w.log.Error("error: search", zap.Error(err))
 		return err
 	}
 	if source != nil {
-		records, err = s.storage.SelectRecordsSourceID(source.ID)
+		records, err = w.storage.SelectRecordsSourceID(source.ID)
 
 		if err != nil {
-			s.log.Error("error: search", zap.Error(err))
+			w.log.Error("error: search", zap.Error(err))
 			return err
 		}
 	}
@@ -137,7 +135,7 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 
 		g.Go(func() error {
 			var err error
-			res, err := chatGPT.ConstructQuestionGPT(r.RecordText, search.ScoreType)
+			res, err := w.ConstructQuestionGPT(r.RecordText, search)
 			if res != nil {
 				err = nil
 				dataTelegram.Records[tempIndexRecords].Score = *res
@@ -145,7 +143,7 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 				return nil
 			}
 			if err != nil {
-				s.log.Error("error: search", zap.Error(err))
+				w.log.Error("error: search", zap.Error(err))
 				return err
 			}
 
@@ -155,22 +153,22 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 	}
 	err = g.Wait()
 	if err != nil {
-		s.log.Warn("error: search", zap.Error(err))
+		w.log.Warn("error: search", zap.Error(err))
 		return err
 	}
 
 	dataTelegram.Records = newRecords
 
 	if source == nil {
-		err := s.storage.CreateSource(dataTelegram.Source)
+		err := w.storage.CreateSource(dataTelegram.Source)
 		if err != nil {
-			s.log.Error("error: create", zap.Error(err))
+			w.log.Error("error: create", zap.Error(err))
 			return err
 		}
 
-		source, err = s.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+		source, err = w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
 		if err != nil {
-			s.log.Error("error: search", zap.Error(err))
+			w.log.Error("error: search", zap.Error(err))
 			return err
 		}
 	}
@@ -181,28 +179,28 @@ func (s *WafflerService) ParseSource(search *message.ParserRequest) error {
 
 		}
 
-		err := s.storage.CreateRecords(dataTelegram.Records)
+		err := w.storage.CreateRecords(dataTelegram.Records)
 		if err != nil {
-			s.log.Error("error: create", zap.Error(err))
+			w.log.Error("error: create", zap.Error(err))
 			return err
 		}
-		records, err = s.storage.SelectRecordsSourceID(source.ID)
+		records, err = w.storage.SelectRecordsSourceID(source.ID)
 		if err != nil {
-			s.log.Error("error: search", zap.Error(err))
+			w.log.Error("error: search", zap.Error(err))
 			return err
 		}
 
-		records, err = s.storage.SelectRecordsSourceID(source.ID)
+		records, err = w.storage.SelectRecordsSourceID(source.ID)
 		if err != nil {
-			s.log.Error("error: search", zap.Error(err))
+			w.log.Error("error: search", zap.Error(err))
 			return err
 		}
 
 		updateScoreRecods(records, source, dataTelegram)
 
-		err = s.storage.UpdateSource(source)
+		err = w.storage.UpdateSource(source)
 		if err != nil {
-			s.log.Error("error: search", zap.Error(err))
+			w.log.Error("error: search", zap.Error(err))
 			return err
 		}
 	}
