@@ -3,23 +3,20 @@ package gpt
 import (
 	"context"
 	"github.com/sashabaranov/go-openai"
-	"go.uber.org/zap"
 )
 
 type ChatGPT struct {
 	gpt *openai.Client
-	log *zap.Logger
 }
 
 type AiLanguageModel interface {
 	QuestionForGPT(answer string) (*openai.ChatCompletionResponse, error)
 }
 
-func NewChatGPT(token string, log *zap.Logger) AiLanguageModel {
+func NewChatGPT(token string) AiLanguageModel {
 	client := openai.NewClient(token)
 	return &ChatGPT{
 		gpt: client,
-		log: log,
 	}
 }
 

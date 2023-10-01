@@ -14,28 +14,31 @@ import (
 const maxParseOnse = 100
 
 type DataSource struct {
-	Source  *models.SourceDTO
-	Records []*models.RecordDTO
-	client  telegram.ClientSource
+	client telegram.ClientSource
 }
 
 type DataSourcer interface {
-	ParseChatTelegramOld(channel *tg2.Channel, limit int) error
-	ContactSearchOld(query string) (*tg2.Channel, error)
+	ParseChatTelegram(query string, limit int) (*DataTelegram, error)
+	ContactSearch(query string) (*tg2.Channel, error)
 }
 
-func NewDataTelegram(sourceUrl string) *DataSource {
+func NewDataTelegram(client telegram.ClientSource) DataSourcer {
 	return &DataSource{
-		Source: &models.SourceDTO{
-			SourceType: models.Telegram,
-			SourceUrl:  sourceUrl,
-		},
-		Records: make([]*models.RecordDTO, 0),
+		client: client,
 	}
 }
 
-func (w *DataSource) ParseChatTelegramOld(channel *tg2.Channel, limit int) error {
-	records := make([]*models.RecordDTO, 0, limit)
+type DataTelegram struct {
+	Source  *models.SourceDTO
+	Records []models.RecordDTO
+}
+
+func (w *DataSource) ParseChatTelegram(query string, limit int) (*DataTelegram, error) {
+	channel, err := w.ContactSearch(query)
+	if err != nil {
+		return nil, err
+	}
+	records := make([]models.RecordDTO, 0, limit)
 
 	for i := 0; i < limit; {
 		var limitParser int
@@ -49,19 +52,25 @@ func (w *DataSource) ParseChatTelegramOld(channel *tg2.Channel, limit int) error
 
 		recordsPart, err := w.parseChatOld(channel, limitParser, i)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		records = append(records, recordsPart...)
 
 		i += limitParser
 
 	}
-	w.Records = records
-	return nil
+	return &DataTelegram{
+		Source: &models.SourceDTO{
+			Name:       channel.Username + " " + "@" + channel.Title,
+			SourceType: models.Telegram,
+			SourceUrl:  query,
+		},
+		Records: records,
+	}, nil
 
 }
 
-func (w *DataSource) ContactSearchOld(query string) (*tg2.Channel, error) {
+func (w *DataSource) ContactSearch(query string) (*tg2.Channel, error) {
 	f, err := w.client.ContactSearch(query)
 	if err != nil {
 		return nil, err
@@ -105,8 +114,8 @@ func (w *DataSource) ContactSearchOld(query string) (*tg2.Channel, error) {
 	return channel, nil
 }
 
-func (w *DataSource) parseChatOld(channel *tg2.Channel, limit int, AddOffset int) ([]*models.RecordDTO, error) {
-	records := make([]*models.RecordDTO, 0, limit)
+func (w *DataSource) parseChatOld(channel *tg2.Channel, limit int, AddOffset int) ([]models.RecordDTO, error) {
+	records := make([]models.RecordDTO, 0, limit)
 	mes, err := w.client.MessagesGetHistory(channel, limit, AddOffset)
 	if err != nil {
 		log.Fatalln("failed to get chat:", err)
@@ -119,7 +128,7 @@ func (w *DataSource) parseChatOld(channel *tg2.Channel, limit int, AddOffset int
 		case *tg2.Message: // message#38116ee0
 			message := mesRaw.(*tg2.Message)
 			records = append(records,
-				&models.RecordDTO{
+				models.RecordDTO{
 					RecordText: message.Message,
 					CreatedAt:  time.Unix(int64(message.Date), 0),
 				})

@@ -5,7 +5,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
-	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
 	"github.com/go-faster/errors"
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
@@ -18,15 +17,30 @@ const (
 	answerGPTWaffler = `Оцени по шкале от 0 до 100 на сколько логически противоречат друг другу следующие два блока текста. 0 - это не противоречат, 100 точное логическое противоречие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений):`
 )
 
-func (w *service.WafflerService) ConstructQuestionGPT(mess string, search *message.ParserRequest) (*int, error) {
+type LanguageModel interface {
+	ConstructQuestionGPT(mess string, search *message.ParserRequest) (*int, error)
+}
+
+func NewChatGPTWrapper(token string, log *zap.Logger) LanguageModel {
+	return &ChatGPT{
+		gpt: gpt.NewChatGPT(token),
+		log: log,
+	}
+}
+
+type ChatGPT struct {
+	gpt gpt.AiLanguageModel
+	log *zap.Logger
+}
+
+func (w *ChatGPT) ConstructQuestionGPT(mess string, search *message.ParserRequest) (*int, error) {
 	var answerGPT *openai.ChatCompletionResponse
 	var err, errWarn error
 
-	chatGPT := gpt.NewChatGPT(search.Parser.Token, w.log)
 	switch search.ScoreType {
 
 	case models.Racism:
-		answerGPT, errWarn = chatGPT.QuestionForGPT(answerGPTRacism + " " + mess)
+		answerGPT, errWarn = w.gpt.QuestionForGPT(answerGPTRacism + " " + mess)
 		if errWarn != nil {
 			w.log.Warn("error: QuestionForGPT", zap.Error(errWarn))
 			return nil, nil

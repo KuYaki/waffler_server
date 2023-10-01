@@ -9,6 +9,8 @@ import (
 	"os"
 )
 
+// main initializes the application, loads environment variables from the .env file,
+// creates the configuration app, creates a logger, and launches the application.
 func main() {
 	//  load environment variables from the .env
 	err := godotenv.Load()

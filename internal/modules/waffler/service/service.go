@@ -2,10 +2,11 @@ package service
 
 import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
-	tg "github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/storage"
+	"github.com/KuYaki/waffler_server/internal/modules/wrapper/data_source"
+	"github.com/KuYaki/waffler_server/internal/modules/wrapper/language_model"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"net/url"
@@ -22,7 +23,7 @@ type WafflerServicer interface {
 type WafflerService struct {
 	storage storage.WafflerStorager
 	log     *zap.Logger
-	tg      *tg.Telegram
+	tg      data_source.DataSourcer
 }
 
 func NewWafflerService(storage storage.WafflerStorager, components *component.Components) *WafflerService {
@@ -110,7 +111,9 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 	g := errgroup.Group{}
 	g.SetLimit(20)
 	var indexNewRecords = -1
-	newRecords := make([]*models.RecordDTO, 0, len(dataTelegram.Records))
+	newRecords := make([]models.RecordDTO, 0, len(dataTelegram.Records))
+
+	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
 	for _, r := range dataTelegram.Records {
 		indexNewRecords++
 		if !containsAlphabet(r.RecordText) {
@@ -135,7 +138,7 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 
 		g.Go(func() error {
 			var err error
-			res, err := w.ConstructQuestionGPT(r.RecordText, search)
+			res, err := lanModel.ConstructQuestionGPT(r.RecordText, search)
 			if res != nil {
 				err = nil
 				dataTelegram.Records[tempIndexRecords].Score = *res

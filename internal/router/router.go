@@ -11,6 +11,7 @@ import (
 func NewApiRouter(controllers *modules.Controllers, components *component.Components) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(cors.AllowAll().Handler)
+	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer) //  ToDO: Need?
 
 	r.Get("/", controllers.Waffler.Hello)

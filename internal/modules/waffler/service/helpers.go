@@ -1,11 +1,11 @@
 package service
 
 import (
-	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/models"
+	"github.com/KuYaki/waffler_server/internal/modules/wrapper/data_source"
 )
 
-func updateScoreRecods(records []*models.RecordDTO, source *models.SourceDTO, dataTelegram *telegram.DataTelegram) {
+func updateScoreRecods(records []*models.RecordDTO, source *models.SourceDTO, dataTelegram *data_source.DataTelegram) {
 	var typeScore models.ScoreType
 	switch dataTelegram.Records[0].ScoreType {
 	case models.Waffler:

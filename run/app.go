@@ -13,6 +13,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules"
+	"github.com/KuYaki/waffler_server/internal/modules/wrapper/data_source"
 	"github.com/KuYaki/waffler_server/internal/router"
 	"github.com/KuYaki/waffler_server/internal/storages"
 	jsoniter "github.com/json-iterator/go"
@@ -120,6 +121,7 @@ func (a *App) Bootstrap() Runner {
 		a.logger.Fatal("app: tg error", zap.Error(err))
 		return nil
 	}
+	dataSource := data_source.NewDataTelegram(tg)
 
 	storagesDB := storages.NewStorages(conn)
 
@@ -142,7 +144,7 @@ func (a *App) Bootstrap() Runner {
 	token := midle.NewTokenManager(responseManager, tokenManager)
 
 	components := component.NewComponents(a.conf, tokenManager, token, responseManager, decoder,
-		hash, tg, a.logger)
+		hash, dataSource, a.logger)
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
 	// init router
