@@ -74,9 +74,9 @@ jobs:
             cd ./waffler_server/waffler_server;
             git checkout master;
             git pull;
-            docker-compose --file Docker-compose.yaml down;
+            docker-compose --file ./deployments/Docker-compose.yaml down;
             docker system prune --all --force;
-            docker-compose --file Docker-compose.yaml up -d;
+            docker-compose --file ./deployments/Docker-compose.yaml up -d;
 
   deploy_test:
     if: github.ref == 'refs/heads/test'
@@ -113,7 +113,7 @@ jobs:
             cd ./waffler_server_test/waffler_server;
             git checkout test;
             git pull;
-            docker-compose --file Docker-compose_test.yaml down;
+            docker-compose --file ./deployments/Docker-compose_test.yaml down;
             docker system prune --all --force;
-            docker-compose --file Docker-compose_test.yaml up -d;
+            docker-compose --file ./deployments/Docker-compose_test.yaml up -d;
     
