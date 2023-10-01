@@ -2,7 +2,7 @@
 
 FROM golang:1.21.1 as builder
 
-COPY . /go/src/waffler/
+COPY .. /go/src/waffler/
 WORKDIR /go/src/waffler/
 RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o waffler ./cmd/api
 

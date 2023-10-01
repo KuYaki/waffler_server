@@ -2,14 +2,13 @@ version: '3.9'
 services:
   ratesapi:
     container_name: ${APP_NAME}api
-    image: yaric011/waffler_server:latest
+    image: yaric011/waffler_server_test:latest
     restart: always
     volumes:
       - ./.env:/root/.env
-      - ./telegram_sessions:/root/telegram_sessions
+      - ../telegram_sessions:/root/telegram_sessions
     depends_on:
       - db
-
     ports:
       - 8080:8080
     networks:
@@ -22,7 +21,7 @@ services:
     volumes:
       - db-data:/root/telegram
     env_file:
-      - .env
+      - ./.env
     ports:
       - ${HOST}:${DB_PORT}:${DB_PORT}
     networks:

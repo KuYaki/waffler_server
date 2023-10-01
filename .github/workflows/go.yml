@@ -7,6 +7,11 @@ on:
   push:
     branches:
       - master
+      - test
+  pull_request:
+    branches:
+      - master
+      - test
 
 jobs:
   test:
@@ -34,7 +39,8 @@ jobs:
     - name: run-test
       run: go test -v ./...
       
-  deploy:
+  deploy_master:
+    if: github.ref == 'refs/heads/master'
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -54,7 +60,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile
+          file: ./deployments/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/waffler_server:latest
           
@@ -64,12 +70,50 @@ jobs:
           host: ${{secrets.SSH_HOST}}
           user: ${{secrets.SSH_USER}}
           private_key: ${{secrets.SSH_PRIVATE_KEY}}
-          command: |
-            cd ./waffler_server;
+          command:
+            cd ./waffler_server/waffler_server;
             git checkout master;
             git pull;
             docker-compose --file Docker-compose.yaml down;
             docker system prune --all --force;
             docker-compose --file Docker-compose.yaml up -d;
-            
+
+  deploy_test:
+    if: github.ref == 'refs/heads/test'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./deployments/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/waffler_server_test:latest
+
+      - name: Run command on remote server
+        uses: D3rHase/ssh-command-action@v0.2.2
+        with:
+          host: ${{secrets.SSH_HOST}}
+          user: ${{secrets.SSH_USER}}
+          private_key: ${{secrets.SSH_PRIVATE_KEY}}
+          command:
+            cd ./waffler_server_test/waffler_server;
+            git checkout test;
+            git pull;
+            docker-compose --file Docker-compose_test.yaml down;
+            docker system prune --all --force;
+            docker-compose --file Docker-compose_test.yaml up -d;
     
