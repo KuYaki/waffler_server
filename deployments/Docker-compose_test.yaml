@@ -1,37 +1,35 @@
 version: '3.9'
 services:
-  ratesapi:
-    container_name: ${APP_NAME}api
+  rest_api_test:
+    container_name: ${APP_NAME}api_test
     image: yaric011/waffler_server_test:latest
     restart: always
     volumes:
       - ./.env:/root/.env
       - ../telegram_sessions:/root/telegram_sessions
     depends_on:
-      - db
+      - db_test
     ports:
-      - 8080:8080
+      - 8081:8080
     networks:
-      - skynet
+      - skynet_test
 
-  db:
-    container_name: ${APP_NAME}db
+  db_test:
+    container_name: ${APP_NAME}db_test
     image: postgres:14.4-alpine
     restart: always
     volumes:
-      - db-data:/root/telegram
+      - db-data_test:/root/telegram
     env_file:
       - ./.env
-    ports:
-      - ${HOST}:${DB_PORT}:${DB_PORT}
     networks:
-      - skynet
+      - skynet_test
     logging:
       options:
         max-size: "10m"
         max-file: "3"
 
 volumes:
-  db-data:
+  db-data_test:
 networks:
-  skynet:
+  skynet_test:

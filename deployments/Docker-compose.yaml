@@ -1,6 +1,6 @@
 version: '3.9'
 services:
-  ratesapi:
+  rest_api:
     container_name: ${APP_NAME}api
     image: yaric011/waffler_server:latest
     restart: always
@@ -22,8 +22,7 @@ services:
       - db-data:/root/telegram
     env_file:
       - ./.env
-    ports:
-      - ${HOST}:${DB_PORT}:${DB_PORT}
+
     networks:
       - skynet
     logging:
