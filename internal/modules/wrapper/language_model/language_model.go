@@ -1,10 +1,11 @@
-package service
+package language_model
 
 import (
 	"fmt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
+	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
 	"github.com/go-faster/errors"
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
@@ -17,7 +18,7 @@ const (
 	answerGPTWaffler = `Оцени по шкале от 0 до 100 на сколько логически противоречат друг другу следующие два блока текста. 0 - это не противоречат, 100 точное логическое противоречие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений):`
 )
 
-func (w *WafflerService) ConstructQuestionGPT(mess string, search *message.ParserRequest) (*int, error) {
+func (w *service.WafflerService) ConstructQuestionGPT(mess string, search *message.ParserRequest) (*int, error) {
 	var answerGPT *openai.ChatCompletionResponse
 	var err, errWarn error
 
