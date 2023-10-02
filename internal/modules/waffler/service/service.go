@@ -1,6 +1,9 @@
 package service
 
 import (
+	"net/url"
+	"unicode"
+
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
@@ -9,8 +12,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/wrapper/language_model"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"net/url"
-	"unicode"
 )
 
 type WafflerServicer interface {
@@ -262,7 +263,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 }
 
 func containsAlphabet(text string) bool {
-	for _, r := range []rune(text) {
+	for _, r := range text {
 		isValid := unicode.IsLetter(r)
 		if isValid {
 			return true
