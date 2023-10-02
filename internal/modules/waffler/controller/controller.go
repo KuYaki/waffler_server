@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	middleware "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
@@ -10,9 +11,10 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
 	"github.com/gorilla/websocket"
 
+	"net/http"
+
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 type Waffler interface {
@@ -50,10 +52,13 @@ func (wa *Waffl) WsTest(w http.ResponseWriter, r *http.Request) {
 		wa.Responder.ErrorInternal(w, err)
 		return
 	}
-
-	ws.WriteMessage(websocket.TextMessage, []byte("hello"))
-
 	defer ws.Close()
+
+	err = ws.WriteMessage(websocket.TextMessage, []byte("hello"))
+	if err != nil {
+		wa.Responder.ErrorInternal(w, err)
+		return
+	}
 
 	err = reader(ws)
 	if err != nil {
@@ -145,9 +150,7 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 			wa.ErrorBadRequest(w, err)
 			return
 		}
-		if user.ParserToken != "" && user.ParserType != "" {
-
-		}
+		// if user.ParserToken != "" && user.ParserType != "" {}
 		Parser.Parser.Token = user.ParserToken
 		Parser.Parser.Type = user.ParserType
 	}
