@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+
 	"github.com/KuYaki/waffler_server/internal/models"
 	"gorm.io/gorm"
 )
@@ -23,12 +24,6 @@ type UserStorage struct {
 func NewUserStorage(conn *gorm.DB) Userer {
 	return &UserStorage{conn: conn}
 }
-
-const (
-	userCacheKey     = "user:%d"
-	userCacheTTL     = 15
-	userCacheTimeout = 50
-)
 
 // Create - создание пользователя в БД
 func (s *UserStorage) Create(ctx context.Context, u *models.UserDTO) error {
