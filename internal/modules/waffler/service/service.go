@@ -106,7 +106,6 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 	for _, r := range dataTelegram.Records {
 		tempRecord := r
 
-		text := r.RecordText
 		g.Go(func() error {
 			var err error
 			res, err := lanModel.ConstructQuestionGPT(tempRecord.RecordText, search)
@@ -125,10 +124,7 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 					return err
 				}
 			}
-			if res != nil {
-				dataTelegram.Records[tempIndexRecords].Score = *res
-				newRecords = append(newRecords, dataTelegram.Records[tempIndexRecords])
-			}
+
 			return nil
 		})
 
@@ -204,7 +200,6 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 			w.log.Error("error: create", zap.Error(err))
 			return err
 		}
-    
 		source, err = w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
 		if err != nil {
 			w.log.Error("error: search", zap.Error(err))
@@ -314,7 +309,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 
 // nolint
 func containsAlphabet(text string) bool {
-	for _, r := range text {
+	for _, r := range []rune(text) {
 		isValid := unicode.IsLetter(r)
 		if isValid {
 			return true
