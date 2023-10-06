@@ -100,9 +100,10 @@ func (a *App) Bootstrap() Runner {
 	}
 	err = conn.AutoMigrate(
 		&models.UserDTO{},
-		&models.WafflerDTO{},
-		&models.WafflerDTO{},
+		&models.SourceDTO{},
+		&models.RecordDTO{},
 		&models.RacismDTO{},
+		&models.WafflerDTO{},
 	)
 
 	if a.conf.TestApp {

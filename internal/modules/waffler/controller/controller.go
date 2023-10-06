@@ -133,7 +133,7 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if Parser.Parser.Token != "" || Parser.Parser.Type != "" {
+	if Parser.Parser.Token == "" || Parser.Parser.Type == "" {
 		wa.Responder.ErrorBadRequest(w, err)
 		return
 	}

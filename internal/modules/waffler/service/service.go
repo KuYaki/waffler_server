@@ -10,7 +10,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"net/url"
-	"time"
 	"unicode"
 )
 
@@ -31,7 +30,7 @@ func NewWafflerService(storage storage.WafflerStorager, components *component.Co
 	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg}
 }
 
-var orderRecords = map[string]string{"record_text": "record_text ASC", "record_text_desc": "record_text DESC", "score": "score ASC", "score_desc": "score DESC",
+var orderRecords = map[string]string{"score": "score ASC", "score_desc": "score DESC",
 	"time": "created_at ASC", "time_desc": "created_at DESC"}
 
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
@@ -41,8 +40,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		},
 		Records: []message.Record{},
 	}
-	records, err := u.storage.
-		ListRecordsSourceIDCursor(request.SourceId, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
+	records, err := u.storage.ListRecordsSourceID(request.SourceId)
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +54,14 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 
 	}
 
-	if len(records) == 0 {
+	if len(racismRecords) == 0 {
 		scoreResponse.Cursor = nil
 
 	} else {
 		scoreResponse.Cursor.Offset += len(records)
 
 		scoreResponse.Records = make([]message.Record, 0, len(records))
-		for i := range records {
+		for i := range racismRecords {
 			scoreResponse.Records = append(scoreResponse.Records, message.Record{
 				RecordText: records[i].RecordText,
 				Score:      racismRecords[i].Score,
@@ -102,7 +100,6 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 	g := errgroup.Group{}
 	g.SetLimit(20)
 
-	var createdTs = time.Now()
 	newRacismRecords := make([]models.RacismDTO, 0, len(dataTelegram.Records))
 	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
 	for _, r := range dataTelegram.Records {
@@ -117,7 +114,7 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 				newRacismRecords = append(newRacismRecords, models.RacismDTO{
 					Score:      *res,
 					ParserType: models.GPT3_5TURBO,
-					CreatedTs:  createdTs,
+					CreatedTs:  tempRecord.CreatedTs,
 					RecordID:   tempRecord.ID,
 					SourceID:   dataTelegram.Source.ID,
 				})
@@ -190,7 +187,7 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 		w.log.Error("error: search", zap.Error(err))
 		return err
 	}
-	if source != nil {
+	if source.Name != "" {
 		records, err = w.storage.ListRecordsSourceID(source.ID)
 
 		if err != nil {
@@ -210,6 +207,10 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 		}
 
 	}
+	for i := range dataTelegram.Records {
+		dataTelegram.Records[i].SourceID = source.ID
+	}
+
 	dataTelegram.Source = source
 
 	err = w.storage.CreateRecords(dataTelegram.Records)
