@@ -9,12 +9,15 @@ import (
 type WafflerStorager interface {
 	CreateSource(*models.SourceDTO) error
 	CreateRecords(records []models.RecordDTO) error
+	CreateRacismRecords(racismRecords []models.RacismDTO) error
 	SearchLikeBySourceURLNotName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error)
 	SearchLikeBySourceName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error)
 	SearchBySourceUrl(url string) (*models.SourceDTO, error)
 	UpdateSource(*models.SourceDTO) error
-	SelectRecordsSourceID(idSource int) ([]*models.RecordDTO, error)
-	SelectRecordsSourceIDOffsetLimit(idSource int, scoreTypes models.ScoreType, order string, offset int, limit int) ([]models.RecordDTO, error)
+	ListRecordsSourceID(idSource int) ([]models.RecordDTO, error)
+	ListRacismRecords(racismRecords *models.RacismDTO) ([]models.RacismDTO, error)
+	ListRecordsSourceIDCursor(idSource int, order string, offset int, limit int) ([]models.RecordDTO, error)
+	ListRacismRecordsSourceIDCursor(idSource int, order string, offset int, limit int) ([]models.RacismDTO, error)
 }
 
 func NewWafflerStorage(conn *gorm.DB) WafflerStorager {
@@ -23,6 +26,41 @@ func NewWafflerStorage(conn *gorm.DB) WafflerStorager {
 
 type WafflerStorage struct {
 	conn *gorm.DB
+}
+
+func (s WafflerStorage) ListRacismRecordsSourceIDCursor(idSource int, order string, offset int, limit int) ([]models.RacismDTO, error) {
+	var records []models.RacismDTO
+
+	querySQL := "source_id = ?"
+
+	var args = []interface{}{idSource}
+
+	err := s.conn.Order(order).Offset(offset).Limit(limit).
+		Where(querySQL, args...).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (s WafflerStorage) ListRacismRecords(racismRecords *models.RacismDTO) ([]models.RacismDTO, error) {
+	var records []models.RacismDTO
+	err := s.conn.Where(racismRecords).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (s WafflerStorage) CreateRacismRecords(racismRecords []models.RacismDTO) error {
+	err := s.conn.Create(racismRecords).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s WafflerStorage) CreateSource(source *models.SourceDTO) error {
@@ -105,16 +143,11 @@ func (s WafflerStorage) SearchBySourceUrl(url string) (*models.SourceDTO, error)
 		return nil, res.Error
 	}
 
-	if res.RowsAffected == 0 {
-		return nil, nil
-
-	}
-
 	return &source, nil
 }
 
-func (s WafflerStorage) SelectRecordsSourceID(idSource int) ([]*models.RecordDTO, error) {
-	var records []*models.RecordDTO
+func (s WafflerStorage) ListRecordsSourceID(idSource int) ([]models.RecordDTO, error) {
+	var records []models.RecordDTO
 	err := s.conn.Where(&models.RecordDTO{SourceID: idSource}).Find(&records).Error
 	if err != nil {
 		return nil, err
@@ -123,12 +156,12 @@ func (s WafflerStorage) SelectRecordsSourceID(idSource int) ([]*models.RecordDTO
 	return records, nil
 }
 
-func (s WafflerStorage) SelectRecordsSourceIDOffsetLimit(idSource int, scoreTypes models.ScoreType, order string, offset int, limit int) ([]models.RecordDTO, error) {
+func (s WafflerStorage) ListRecordsSourceIDCursor(idSource int, order string, offset int, limit int) ([]models.RecordDTO, error) {
 	var records []models.RecordDTO
 
-	querySQL := "source_id = ? AND score_type = ?"
+	querySQL := "source_id = ?"
 
-	var args = []interface{}{idSource, scoreTypes}
+	var args = []interface{}{idSource}
 
 	err := s.conn.Order(order).Offset(offset).Limit(limit).
 		Where(querySQL, args...).Find(&records).Error

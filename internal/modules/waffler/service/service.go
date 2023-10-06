@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"net/url"
+	"time"
 	"unicode"
 )
 
@@ -41,9 +42,18 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		Records: []message.Record{},
 	}
 	records, err := u.storage.
-		SelectRecordsSourceIDOffsetLimit(request.SourceId, request.Type, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
+		ListRecordsSourceIDCursor(request.SourceId, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
 	if err != nil {
 		return nil, err
+	}
+	var racismRecords []models.RacismDTO
+	switch request.Type {
+	case models.Racism:
+		racismRecords, err = u.storage.ListRacismRecordsSourceIDCursor(request.SourceId, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	if len(records) == 0 {
@@ -56,8 +66,8 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		for i := range records {
 			scoreResponse.Records = append(scoreResponse.Records, message.Record{
 				RecordText: records[i].RecordText,
-				Score:      records[i].Score,
-				Timestamp:  records[i].CreatedAt,
+				Score:      racismRecords[i].Score,
+				Timestamp:  racismRecords[i].CreatedTs,
 			})
 		}
 	}
@@ -88,38 +98,133 @@ func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, err
 	return res, nil
 }
 
+func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, dataTelegram *data_source.DataTelegram) error {
+	g := errgroup.Group{}
+	g.SetLimit(20)
+
+	var createdTs = time.Now()
+	newRacismRecords := make([]models.RacismDTO, 0, len(dataTelegram.Records))
+	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
+	for _, r := range dataTelegram.Records {
+		tempRecord := r
+
+		g.Go(func() error {
+			var err error
+			res, err := lanModel.ConstructQuestionGPT(tempRecord.RecordText, search)
+			if res != nil {
+				err = nil
+
+				newRacismRecords = append(newRacismRecords, models.RacismDTO{
+					Score:      *res,
+					ParserType: models.GPT3_5TURBO,
+					CreatedTs:  createdTs,
+					RecordID:   tempRecord.ID,
+					SourceID:   dataTelegram.Source.ID,
+				})
+				return nil
+			}
+			if err != nil {
+				w.log.Error("error: search", zap.Error(err))
+				return err
+			}
+
+			return nil
+		})
+
+	}
+	err := g.Wait()
+	if err != nil {
+		w.log.Warn("error: search", zap.Error(err))
+		return err
+	}
+
+	source, err := w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+	if err != nil {
+		w.log.Error("error: search", zap.Error(err))
+		return err
+	}
+
+	err = w.storage.CreateRacismRecords(newRacismRecords)
+	if err != nil {
+		w.log.Error("error: search", zap.Error(err))
+		return err
+	}
+
+	if len(dataTelegram.Records) != 0 {
+
+		racismRecords, err := w.storage.ListRacismRecords(&models.RacismDTO{SourceID: dataTelegram.Source.ID})
+		if err != nil {
+			w.log.Error("error: search", zap.Error(err))
+			return err
+		}
+
+		source.RacismScore = func() int {
+			score := 0
+			for _, r := range racismRecords {
+				score += r.Score
+			}
+			return score / len(racismRecords)
+		}()
+
+		err = w.storage.UpdateSource(source)
+		if err != nil {
+			w.log.Error("error: search", zap.Error(err))
+			return err
+		}
+	}
+
+	return err
+}
+
 func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 	dataTelegram, err := w.tg.ParseChatTelegram(search.SourceURL, 20) // TODO: search.Limit
 	if err != nil {
 		w.log.Error("search", zap.Error(err))
 	}
 
-	records := make([]*models.RecordDTO, 0, 1)
-	source, err := w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+	var source *models.SourceDTO
+	var records []models.RecordDTO
+
+	source, err = w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
 	if err != nil {
 		w.log.Error("error: search", zap.Error(err))
 		return err
 	}
 	if source != nil {
-		records, err = w.storage.SelectRecordsSourceID(source.ID)
+		records, err = w.storage.ListRecordsSourceID(source.ID)
 
 		if err != nil {
 			w.log.Error("error: search", zap.Error(err))
 			return err
 		}
-	}
-	g := errgroup.Group{}
-	g.SetLimit(20)
-	var indexNewRecords = -1
-	newRecords := make([]models.RecordDTO, 0, len(dataTelegram.Records))
+	} else {
+		err = w.storage.CreateSource(dataTelegram.Source)
+		if err != nil {
+			w.log.Error("error: create", zap.Error(err))
+			return err
+		}
+		source, err = w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+		if err != nil {
+			w.log.Error("error: search", zap.Error(err))
+			return err
+		}
 
-	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
+	}
+	dataTelegram.Source = source
+
+	err = w.storage.CreateRecords(dataTelegram.Records)
+	if err != nil {
+		w.log.Error("error: create", zap.Error(err))
+		return err
+	}
+
+	var recordsFilter = make([]models.RecordDTO, 0, len(dataTelegram.Records))
+
 	for _, r := range dataTelegram.Records {
-		indexNewRecords++
+		recordFilter := r
 		if !containsAlphabet(r.RecordText) {
 			continue
 		}
-		tempIndexRecords := indexNewRecords
 
 		existText := false
 		if len(records) != 0 {
@@ -132,84 +237,147 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 
 			}
 		}
+
 		if existText {
 			continue
 		}
-
-		g.Go(func() error {
-			var err error
-			res, err := lanModel.ConstructQuestionGPT(r.RecordText, search)
-			if res != nil {
-				err = nil
-				dataTelegram.Records[tempIndexRecords].Score = *res
-				newRecords = append(newRecords, dataTelegram.Records[tempIndexRecords])
-				return nil
-			}
-			if err != nil {
-				w.log.Error("error: search", zap.Error(err))
-				return err
-			}
-
-			return nil
-		})
-
+		recordsFilter = append(recordsFilter, recordFilter)
 	}
-	err = g.Wait()
-	if err != nil {
-		w.log.Warn("error: search", zap.Error(err))
-		return err
-	}
+	dataTelegram.Records = recordsFilter
 
-	dataTelegram.Records = newRecords
+	switch search.ScoreType {
+	case models.Racism:
+		err = w.parseSourceTypeRacism(search, dataTelegram)
 
-	if source == nil {
-		err := w.storage.CreateSource(dataTelegram.Source)
-		if err != nil {
-			w.log.Error("error: create", zap.Error(err))
-			return err
-		}
+	case models.Waffler:
 
-		source, err = w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
-		if err != nil {
-			w.log.Error("error: search", zap.Error(err))
-			return err
-		}
-	}
-
-	if len(dataTelegram.Records) != 0 {
-		for i := range dataTelegram.Records {
-			dataTelegram.Records[i].SourceID = source.ID
-
-		}
-
-		err := w.storage.CreateRecords(dataTelegram.Records)
-		if err != nil {
-			w.log.Error("error: create", zap.Error(err))
-			return err
-		}
-		records, err = w.storage.SelectRecordsSourceID(source.ID)
-		if err != nil {
-			w.log.Error("error: search", zap.Error(err))
-			return err
-		}
-
-		records, err = w.storage.SelectRecordsSourceID(source.ID)
-		if err != nil {
-			w.log.Error("error: search", zap.Error(err))
-			return err
-		}
-
-		updateScoreRecods(records, source, dataTelegram)
-
-		err = w.storage.UpdateSource(source)
-		if err != nil {
-			w.log.Error("error: search", zap.Error(err))
-			return err
-		}
 	}
 
 	return err
 }
+
+//func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
+//	dataTelegram, err := w.tg.ParseChatTelegram(search.SourceURL, 20) // TODO: search.Limit
+//	if err != nil {
+//		w.log.Error("search", zap.Error(err))
+//	}
+//
+//	records := make([]*models.RecordDTO, 0, 1)
+//	source, err := w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+//	if err != nil {
+//		w.log.Error("error: search", zap.Error(err))
+//		return err
+//	}
+//	if source != nil {
+//		records, err = w.storage.ListRecordsSourceID(source.ID)
+//
+//		if err != nil {
+//			w.log.Error("error: search", zap.Error(err))
+//			return err
+//		}
+//	}
+//	g := errgroup.Group{}
+//	g.SetLimit(20)
+//	var indexNewRecords = -1
+//	newRecords := make([]models.RecordDTO, 0, len(dataTelegram.Records))
+//
+//	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
+//	for _, r := range dataTelegram.Records {
+//		indexNewRecords++
+//		if !containsAlphabet(r.RecordText) {
+//			continue
+//		}
+//		tempIndexRecords := indexNewRecords
+//
+//		existText := false
+//		if len(records) != 0 {
+//			for _, record := range records { //  ToDo: optimize
+//				if record.RecordText == r.RecordText {
+//					r.RecordText = record.RecordText
+//					existText = true
+//					break
+//				}
+//
+//			}
+//		}
+//		if existText {
+//			continue
+//		}
+//
+//		g.Go(func() error {
+//			var err error
+//			res, err := lanModel.ConstructQuestionGPT(r.RecordText, search)
+//			if res != nil {
+//				err = nil
+//				dataTelegram.Records[tempIndexRecords].Score = *res
+//				newRecords = append(newRecords, dataTelegram.Records[tempIndexRecords])
+//				return nil
+//			}
+//			if err != nil {
+//				w.log.Error("error: search", zap.Error(err))
+//				return err
+//			}
+//
+//			return nil
+//		})
+//
+//	}
+//	err = g.Wait()
+//	if err != nil {
+//		w.log.Warn("error: search", zap.Error(err))
+//		return err
+//	}
+//
+//	dataTelegram.Records = newRecords
+//
+//	if source == nil {
+//		err := w.storage.CreateSource(dataTelegram.Source)
+//		if err != nil {
+//			w.log.Error("error: create", zap.Error(err))
+//			return err
+//		}
+//
+//		source, err = w.storage.SearchBySourceUrl(dataTelegram.Source.SourceUrl)
+//		if err != nil {
+//			w.log.Error("error: search", zap.Error(err))
+//			return err
+//		}
+//	}
+//
+//	if len(dataTelegram.Records) != 0 {
+//		for i := range dataTelegram.Records {
+//			dataTelegram.Records[i].SourceID = source.ID
+//
+//		}
+//
+//		err := w.storage.CreateRecords(dataTelegram.Records)
+//		if err != nil {
+//			w.log.Error("error: create", zap.Error(err))
+//			return err
+//		}
+//		records, err = w.storage.ListRecordsSourceID(source.ID)
+//		if err != nil {
+//			w.log.Error("error: search", zap.Error(err))
+//			return err
+//		}
+//
+//		records, err = w.storage.ListRecordsSourceID(source.ID)
+//		if err != nil {
+//			w.log.Error("error: search", zap.Error(err))
+//			return err
+//		}
+//
+//		updateScoreRecods(records, source, dataTelegram)
+//
+//		err = w.storage.UpdateSource(source)
+//		if err != nil {
+//			w.log.Error("error: search", zap.Error(err))
+//			return err
+//		}
+//	}
+//
+//	return err
+//}
 
 var orderSources = map[string]string{"name": "name ASC", "name_desc": "name DESC", "source": "source_type ASC", "source_desc": "source_type DESC",
 	"waffler": "waffler_score ASC", "waffler_desc": "waffler_score DESC", "racizm": "racism_score ASC", "racizm_desc": "racism_score DESC"}

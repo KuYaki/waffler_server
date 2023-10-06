@@ -6,6 +6,7 @@ import (
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
+	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	uservice "github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"go.uber.org/zap"
@@ -38,7 +39,7 @@ func (a *Auth) Login(ctx context.Context, user message.User) (*AuthorizeOut, int
 		return nil, http.StatusUnauthorized, err
 	}
 	// 2. проверяем пароль
-	if !cryptography.CheckPassword(userDb.Hash, user.Password) {
+	if !cryptography.CheckPassword(userDb.PwdHash, user.Password) {
 		a.logger.Error("user: CheckPassword err", zap.Error(err))
 		return nil, http.StatusUnauthorized, errors.New("wrong password")
 	}
@@ -72,9 +73,9 @@ func (a *Auth) Register(ctx context.Context, username, password string) (int, er
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	dto := message.User{
+	dto := &models.UserDTO{
 		Username: username,
-		Password: hashPass,
+		PwdHash:  hashPass,
 	}
 
 	err = a.user.Create(ctx, dto)

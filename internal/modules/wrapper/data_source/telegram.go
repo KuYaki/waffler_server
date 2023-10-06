@@ -40,6 +40,7 @@ func (w *DataSource) ParseChatTelegram(query string, limit int) (*DataTelegram, 
 	}
 	records := make([]models.RecordDTO, 0, limit)
 
+	sessionTs := time.Now()
 	for i := 0; i < limit; {
 		var limitParser int
 		if limit-i > maxParseOnse {
@@ -50,7 +51,7 @@ func (w *DataSource) ParseChatTelegram(query string, limit int) (*DataTelegram, 
 
 		}
 
-		recordsPart, err := w.parseChatOld(channel, limitParser, i)
+		recordsPart, err := w.parseChat(channel, limitParser, i, sessionTs)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +115,7 @@ func (w *DataSource) ContactSearch(query string) (*tg2.Channel, error) {
 	return channel, nil
 }
 
-func (w *DataSource) parseChatOld(channel *tg2.Channel, limit int, AddOffset int) ([]models.RecordDTO, error) {
+func (w *DataSource) parseChat(channel *tg2.Channel, limit int, AddOffset int, sessionTs time.Time) ([]models.RecordDTO, error) {
 	records := make([]models.RecordDTO, 0, limit)
 	mes, err := w.client.MessagesGetHistory(channel, limit, AddOffset)
 	if err != nil {
@@ -130,7 +131,9 @@ func (w *DataSource) parseChatOld(channel *tg2.Channel, limit int, AddOffset int
 			records = append(records,
 				models.RecordDTO{
 					RecordText: message.Message,
-					CreatedAt:  time.Unix(int64(message.Date), 0),
+					CreatedTs:  time.Unix(int64(message.Date), 0),
+					SessionTs:  sessionTs,
+					RecordURL:  fmt.Sprintf("https://t.me/%s/%d", channel.Username, message.ID),
 				})
 		case *tg2.MessageService: // messageService#2b085862
 		default:

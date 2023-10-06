@@ -10,7 +10,7 @@ import (
 )
 
 type Userer interface {
-	Create(ctx context.Context, user message.User) error
+	Create(ctx context.Context, user *models.UserDTO) error
 	Update(ctx context.Context, user message.UserInfo, idUser int) error
 	GetByLogin(ctx context.Context, username string) (*models.UserDTO, error)
 	GetByID(ctx context.Context, id int) (*message.User, error)
@@ -24,18 +24,19 @@ type UserService struct {
 }
 
 func (u *UserService) GetUserInfo(ctx context.Context, id int) (*message.UserInfo, error) {
-	user, err := u.storage.GetByID(ctx, id)
+	_, err := u.storage.GetByID(ctx, id)
 	if err != nil {
 		u.logger.Error("user: GetByID err", zap.Error(err))
 		return nil, err
 	}
 
+	//  maintain compatibility  ToDo: change it
 	userInfo := &message.UserInfo{
 		Parser: message.Parser{
-			Type:  user.ParserType.String,
-			Token: user.ParserToken.String,
+			Type:  "not found",
+			Token: "not found",
 		},
-		Locale: user.Locale.String,
+		Locale: "not found",
 	}
 
 	return userInfo, err
@@ -55,12 +56,8 @@ func NewUserService(storage storage.Userer, components *component.Components) *U
 	return &UserService{storage: storage, logger: components.Logger}
 }
 
-func (u *UserService) Create(ctx context.Context, user message.User) error {
-	us := &models.UserDTO{
-		Username: user.Username,
-		Hash:     user.Password,
-	}
-	err := u.storage.Create(ctx, us)
+func (u *UserService) Create(ctx context.Context, user *models.UserDTO) error {
+	err := u.storage.Create(ctx, user)
 	if err != nil {
 		return err
 	}
@@ -97,7 +94,7 @@ func (u *UserService) GetByID(ctx context.Context, id int) (*message.User, error
 	us := &message.User{
 		ID:          user.ID,
 		Username:    user.Username,
-		Password:    user.Hash,
+		Password:    user.PwdHash,
 		ParserToken: user.ParserToken.String,
 		ParserType:  user.ParserType.String,
 		Locale:      user.Locale.String,
@@ -116,47 +113,28 @@ func (u *UserService) ExistsUser(ctx context.Context, username string) (bool, er
 	return user, err
 }
 
-//func (u *UserService) GetUserInfo(ctx context.Context, id int) (*models.User, error) {
-//	user, err := u.storage.GetUserInfo(ctx, id)
-//	if err != nil {
-//		u.logger.Error("user: GetByEmail err", zap.Error(err))
-//		return nil, err
-//	}
-//
-//	us := &models.User{
-//		ID:          user.ID,
-//		Username:    user.Username,
-//		Password:    user.Hash,
-//		ParserToken: user.ParserToken.String,
-//		ParserType:  user.ParserType.String,
-//		Locale:      user.Locale.String,
-//	}
-//
-//	return us, nil
-//}
-
 func newUserDTO(user message.UserInfo) (*models.UserDTO, error) {
-	var err error
+	//  maintain compatibility  ToDo: change it
 	userDB := models.UserDTO{}
-	if user.Parser.Token != "" {
-		err = userDB.ParserToken.Scan(user.Parser.Token)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if user.Parser.Type != "" {
-		err = userDB.ParserType.Scan(user.Parser.Type)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if user.Locale != "" {
-		err = userDB.Locale.Scan(user.Locale)
-		if err != nil {
-			return nil, err
-		}
-	}
+	//if user.Parser.Token != "" {
+	//	err = userDB.ParserToken.Scan(user.Parser.Token)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+	//
+	//if user.Parser.Type != "" {
+	//	err = userDB.ParserType.Scan(user.Parser.Type)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+	//if user.Locale != "" {
+	//	err = userDB.Locale.Scan(user.Locale)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
 
 	return &userDB, nil
 }
