@@ -51,13 +51,13 @@ func (wa *Waffl) WsTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer ws.Close()
+
 	err = ws.WriteMessage(websocket.TextMessage, []byte("hello"))
 	if err != nil {
 		wa.Responder.ErrorInternal(w, err)
 		return
 	}
-
-	defer ws.Close()
 
 	err = reader(ws)
 	if err != nil {
