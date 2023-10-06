@@ -1,6 +1,9 @@
 package service
 
 import (
+	"net/url"
+	"unicode"
+
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
@@ -9,8 +12,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/wrapper/language_model"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"net/url"
-	"unicode"
 )
 
 type WafflerServicer interface {
@@ -136,20 +137,18 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 			continue
 		}
 
+		text := r.RecordText
 		g.Go(func() error {
 			var err error
-			res, err := lanModel.ConstructQuestionGPT(r.RecordText, search)
-			if res != nil {
-				err = nil
-				dataTelegram.Records[tempIndexRecords].Score = *res
-				newRecords = append(newRecords, dataTelegram.Records[tempIndexRecords])
-				return nil
-			}
+			res, err := lanModel.ConstructQuestionGPT(text, search)
 			if err != nil {
 				w.log.Error("error: search", zap.Error(err))
 				return err
 			}
-
+			if res != nil {
+				dataTelegram.Records[tempIndexRecords].Score = *res
+				newRecords = append(newRecords, dataTelegram.Records[tempIndexRecords])
+			}
 			return nil
 		})
 
@@ -187,12 +186,6 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 			w.log.Error("error: create", zap.Error(err))
 			return err
 		}
-		records, err = w.storage.SelectRecordsSourceID(source.ID)
-		if err != nil {
-			w.log.Error("error: search", zap.Error(err))
-			return err
-		}
-
 		records, err = w.storage.SelectRecordsSourceID(source.ID)
 		if err != nil {
 			w.log.Error("error: search", zap.Error(err))
@@ -262,7 +255,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 }
 
 func containsAlphabet(text string) bool {
-	for _, r := range []rune(text) {
+	for _, r := range text {
 		isValid := unicode.IsLetter(r)
 		if isValid {
 			return true
