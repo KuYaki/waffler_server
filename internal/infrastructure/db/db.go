@@ -36,11 +36,8 @@ func TestDB(conn *gorm.DB) error {
 	if result.RowsAffected == 0 {
 		for i := 0; i < 100; i++ {
 			userNew := &models.UserDTO{
-				Username:    gofakeit.Username(),
-				Hash:        gofakeit.Animal(),
-				ParserToken: NewNullString(gofakeit.UUID()),
-				ParserType:  NewNullString("GPT"),
-				Locale:      NewNullString(gofakeit.RandomString([]string{"en", "ru"})),
+				Username: gofakeit.Username(),
+				PwdHash:  gofakeit.Animal(),
 			}
 			result = conn.Create(userNew)
 			if result.Error != nil {
@@ -79,9 +76,6 @@ func TestDB(conn *gorm.DB) error {
 		for i := 0; i < 100; i++ {
 			recordsNew := &models.RecordDTO{
 				RecordText: gofakeit.Cat(),
-				Score:      gofakeit.Number(0, 10),
-				ScoreType:  models.ScoreType(gofakeit.Number(0, 1)),
-				CreatedAt:  gofakeit.Date(),
 				SourceID:   gofakeit.Number(1, 3),
 			}
 

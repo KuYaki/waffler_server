@@ -40,6 +40,7 @@ func (w *DataSource) ParseChatTelegram(query string, limit int) (*DataTelegram, 
 	}
 	records := make([]models.RecordDTO, 0, limit)
 
+	sessionTs := time.Now()
 	for i := 0; i < limit; {
 		var limitParser int
 		if limit-i > maxParseOnse {
@@ -50,7 +51,7 @@ func (w *DataSource) ParseChatTelegram(query string, limit int) (*DataTelegram, 
 
 		}
 
-		recordsPart, err := w.parseChatOld(channel, limitParser, i)
+		recordsPart, err := w.parseChat(channel, limitParser, i, sessionTs)
 		if err != nil {
 			return nil, err
 		}
@@ -68,6 +69,36 @@ func (w *DataSource) ParseChatTelegram(query string, limit int) (*DataTelegram, 
 		Records: records,
 	}, nil
 
+}
+
+func (w *DataSource) parseChat(channel *tg2.Channel, limit int, AddOffset int, sessionTs time.Time) ([]models.RecordDTO, error) {
+	records := make([]models.RecordDTO, 0, limit)
+	mes, err := w.client.MessagesGetHistory(channel, limit, AddOffset)
+	if err != nil {
+		log.Fatalln("failed to get chat:", err)
+	}
+	res := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
+
+	for _, mesRaw := range res.Messages {
+		switch v := mesRaw.(type) {
+		case *tg2.MessageEmpty: // messageEmpty#90a6ca84
+		case *tg2.Message: // message#38116ee0
+			message := mesRaw.(*tg2.Message)
+			records = append(records,
+				models.RecordDTO{
+					RecordText: message.Message,
+					CreatedTs:  time.Unix(int64(message.Date), 0),
+					SessionTs:  sessionTs,
+					RecordURL:  fmt.Sprintf("https://t.me/%s/%d", channel.Username, message.ID),
+				})
+		case *tg2.MessageService: // messageService#2b085862
+		default:
+			return nil, fmt.Errorf("unknown message type: %T", v) // ToDo: log
+		}
+
+	}
+
+	return records, nil
 }
 
 func (w *DataSource) ContactSearch(query string) (*tg2.Channel, error) {
@@ -112,32 +143,4 @@ func (w *DataSource) ContactSearch(query string) (*tg2.Channel, error) {
 	}
 
 	return channel, nil
-}
-
-func (w *DataSource) parseChatOld(channel *tg2.Channel, limit int, AddOffset int) ([]models.RecordDTO, error) {
-	records := make([]models.RecordDTO, 0, limit)
-	mes, err := w.client.MessagesGetHistory(channel, limit, AddOffset)
-	if err != nil {
-		log.Fatalln("failed to get chat:", err)
-	}
-	res := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
-
-	for _, mesRaw := range res.Messages {
-		switch v := mesRaw.(type) {
-		case *tg2.MessageEmpty: // messageEmpty#90a6ca84
-		case *tg2.Message: // message#38116ee0
-			message := mesRaw.(*tg2.Message)
-			records = append(records,
-				models.RecordDTO{
-					RecordText: message.Message,
-					CreatedAt:  time.Unix(int64(message.Date), 0),
-				})
-		case *tg2.MessageService: // messageService#2b085862
-		default:
-			return nil, fmt.Errorf("unknown message type: %T", v) // ToDo: log
-		}
-
-	}
-
-	return records, nil
 }

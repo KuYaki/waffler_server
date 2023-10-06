@@ -1,17 +1,13 @@
 package models
 
 import (
-	"database/sql"
 	"time"
 )
 
 type UserDTO struct {
-	ID          int            `json:"id" gorm:"primaryKey"`
-	Username    string         `json:"username,omitempty"`
-	Hash        string         `json:"password,omitempty"`
-	ParserToken sql.NullString `json:"token_parser,omitempty"`
-	ParserType  sql.NullString `json:"type_parser"`
-	Locale      sql.NullString `json:"locale,omitempty"`
+	ID       int    `json:"id" gorm:"primaryKey"`
+	Username string `json:"username,omitempty"`
+	PwdHash  string `json:"password,omitempty"`
 }
 
 type SourceDTO struct {
@@ -26,10 +22,29 @@ type SourceDTO struct {
 type RecordDTO struct {
 	ID         int       `json:"id,omitempty" gorm:"primaryKey"`
 	RecordText string    `json:"record_text"`
-	Score      int       `json:"score"`
-	ScoreType  ScoreType `json:"score_type"`
-	CreatedAt  time.Time `json:"timestamp"`
+	RecordURL  string    `json:"record_url"`
+	CreatedTs  time.Time `json:"created_ts"`
+	SessionTs  time.Time `json:"session_ts"`
 	SourceID   int       `json:"source_id,omitempty"`
+}
+
+type WafflerDTO struct {
+	ID             int        `json:"id,omitempty" gorm:"primaryKey"`
+	Score          int        `json:"score"`
+	ParserType     ParserType `json:"parser"`
+	RecordIDBefore int        `json:"record_id_before"`
+	RecordIDAfter  int        `json:"record_id_after"`
+	CreatedTsAfter time.Time  `json:"timestamp"`
+	SourceID       int        `json:"source_id,omitempty"`
+}
+
+type RacismDTO struct {
+	ID         int        `json:"id,omitempty" gorm:"primaryKey"`
+	Score      int        `json:"score"`
+	ParserType ParserType `json:"score_type"`
+	CreatedTs  time.Time  `json:"created_ts"`
+	RecordID   int        `json:"record_id"`
+	SourceID   int        `json:"source_id"`
 }
 
 type ScoreType int
@@ -44,4 +59,11 @@ type SourceType int
 const (
 	Telegram SourceType = iota
 	Youtube
+)
+
+type ParserType int
+
+const (
+	GPT3_5TURBO ParserType = iota
+	GPT4
 )

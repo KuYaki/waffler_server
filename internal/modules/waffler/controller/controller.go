@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"context"
-
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	middleware "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
@@ -52,6 +50,7 @@ func (wa *Waffl) WsTest(w http.ResponseWriter, r *http.Request) {
 		wa.Responder.ErrorInternal(w, err)
 		return
 	}
+
 	defer ws.Close()
 
 	err = ws.WriteMessage(websocket.TextMessage, []byte("hello"))
@@ -139,20 +138,9 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if Parser.Parser.Token == "" {
-		claims, err := wa.token.ExtractUserFormRequest(r)
-		if err != nil {
-			wa.ErrorUnauthorized(w, err)
-			return
-		}
-		user, err := wa.userService.GetByID(context.Background(), claims.ID)
-		if err != nil {
-			wa.ErrorBadRequest(w, err)
-			return
-		}
-		// if user.ParserToken != "" && user.ParserType != "" {}
-		Parser.Parser.Token = user.ParserToken
-		Parser.Parser.Type = user.ParserType
+	if Parser.Parser.Token == "" || Parser.Parser.Type == "" {
+		wa.Responder.ErrorBadRequest(w, err)
+		return
 	}
 
 	err = wa.service.ParseSource(Parser)

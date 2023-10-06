@@ -7,7 +7,7 @@ services:
       dockerfile: ./Dockerfile
     restart: always
     volumes:
-      - ./.env:/root/.env
+      - ../.env:/root/.env
       - ../telegram_sessions:/root/telegram_sessions
     depends_on:
       - db
@@ -23,7 +23,7 @@ services:
     volumes:
       - db-data:/root/telegram
     env_file:
-      - .env
+      - ../.env
     ports:
       - ${HOST}:${DB_PORT}:${DB_PORT}
     networks:

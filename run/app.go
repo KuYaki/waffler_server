@@ -102,6 +102,8 @@ func (a *App) Bootstrap() Runner {
 		&models.UserDTO{},
 		&models.SourceDTO{},
 		&models.RecordDTO{},
+		&models.RacismDTO{},
+		&models.WafflerDTO{},
 	)
 
 	if a.conf.TestApp {

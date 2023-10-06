@@ -1,12 +1,13 @@
 package main
 
 import (
+	"log"
+	"os"
+
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/logs"
 	"github.com/KuYaki/waffler_server/run"
 	"github.com/joho/godotenv"
-	"log"
-	"os"
 )
 
 // main initializes the application, loads environment variables from the .env file,
