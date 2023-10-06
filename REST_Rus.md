@@ -404,7 +404,7 @@
 
 ```json
 {
-    "locale": "Язык"
+    "locale": "RU"
 }
 ```
 
