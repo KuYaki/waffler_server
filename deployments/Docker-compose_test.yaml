@@ -5,7 +5,7 @@ services:
     image: yaric011/waffler_server_test:latest
     restart: always
     volumes:
-      - ./.env:/root/.env
+      - ../.env:/root/.env
       - ../telegram_sessions:/root/telegram_sessions
     depends_on:
       - db_test
@@ -21,7 +21,7 @@ services:
     volumes:
       - db-data_test:/root/telegram
     env_file:
-      - ./.env
+      - ../.env
     networks:
       - skynet_test
     logging:

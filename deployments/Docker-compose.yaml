@@ -5,7 +5,7 @@ services:
     image: yaric011/waffler_server:latest
     restart: always
     volumes:
-      - ./.env:/root/.env
+      - ../.env:/root/.env
       - ../telegram_sessions:/root/telegram_sessions
     depends_on:
       - db
@@ -21,7 +21,7 @@ services:
     volumes:
       - db-data:/root/telegram
     env_file:
-      - ./.env
+      - ../.env
 
     networks:
       - skynet

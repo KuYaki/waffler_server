@@ -92,12 +92,9 @@ func (u *UserService) GetByID(ctx context.Context, id int) (*message.User, error
 	}
 
 	us := &message.User{
-		ID:          user.ID,
-		Username:    user.Username,
-		Password:    user.PwdHash,
-		ParserToken: user.ParserToken.String,
-		ParserType:  user.ParserType.String,
-		Locale:      user.Locale.String,
+		ID:       user.ID,
+		Username: user.Username,
+		Password: user.PwdHash,
 	}
 
 	return us, nil
