@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/models"
-	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/go-faster/errors"
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 const (
-	answerGPTRacism  = `Не пиши ничего кроме дробного числа - доля расизма в субъективной оценке гипотетического оценщик, если не уверен пиши 0.0. Оцени долю расизма следующего высказывания:`
-	answerGPTWaffler = `Оцени по шкале от 0 до 100 на сколько логически противоречат друг другу следующие два блока текста. 0 - это не противоречат, 100 точное логическое противоречие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений):`
+	answerGPTRacism  = `Оцени по шкале от 0 до 100 на сколько рассисткий следующий  текст. 0 - это не рассисткие, 100 точное расисткие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений:`
+	answerGPTWaffler = `Оцени по шкале от 0 до 100 на сколько логически противоречат друг другу следующие два блока текста. 0 - это не противоречат, 100 точное логическое противоречие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений:`
 )
 
 type LanguageModel interface {
-	ConstructQuestionGPT(mess string, search *message.ParserRequest) (*int, error)
+	ConstructQuestionGPT(mess string, scoreType models.ScoreType) (*int, error)
 }
 
 func NewChatGPTWrapper(token string, log *zap.Logger) LanguageModel {
@@ -33,11 +33,11 @@ type ChatGPT struct {
 	log *zap.Logger
 }
 
-func (w *ChatGPT) ConstructQuestionGPT(mess string, search *message.ParserRequest) (*int, error) {
+func (w *ChatGPT) ConstructQuestionGPT(mess string, scoreType models.ScoreType) (*int, error) {
 	var answerGPT *openai.ChatCompletionResponse
 	var err, errWarn error
 
-	switch search.ScoreType {
+	switch scoreType {
 
 	case models.Racism:
 		answerGPT, errWarn = w.gpt.QuestionForGPT(answerGPTRacism + " " + mess)
@@ -45,9 +45,14 @@ func (w *ChatGPT) ConstructQuestionGPT(mess string, search *message.ParserReques
 			w.log.Warn("error: QuestionForGPT", zap.Error(errWarn))
 			return nil, nil
 		}
-
+	case models.Waffler:
+		answerGPT, errWarn = w.gpt.QuestionForGPT(answerGPTWaffler + " " + mess)
+		if errWarn != nil {
+			w.log.Warn("error: QuestionForGPT", zap.Error(errWarn))
+			return nil, nil
+		}
 	default:
-		answerGPT, err = nil, errors.New(fmt.Sprintf("error: unknown score type %v", search.ScoreType))
+		answerGPT, err = nil, errors.New(fmt.Sprintf("error: unknown score type %v", scoreType))
 	}
 	if err != nil {
 		return nil, err
@@ -63,61 +68,20 @@ func (w *ChatGPT) ConstructQuestionGPT(mess string, search *message.ParserReques
 }
 
 func parseAnswerGPT(answer string) (int, error) {
-	var scoreFloat = []string{"1.0", "0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0", "0"}
-	var resRaw string
-	var find bool
-	for _, v := range scoreFloat {
-		re, err := regexp.Compile(string(v))
-		if err != nil {
-			return 0, err
-		}
-		res := re.MatchString(answer)
-		if res {
-			resRaw = v
-			find = true
-			break
-		}
-	}
-	if !find {
-		return 0, errors.New("error: parseAnswerGPT" + answer)
-	}
-	if resRaw == "0" {
-		return 0, nil
-
+	if strings.Contains(answer, "-1") {
+		return -1, nil
 	}
 
-	var result int
-	float, err := strconv.ParseFloat(resRaw, 64)
+	// Само регулярный выражение для поиска числа от 0 до 100
+	re := regexp.MustCompile(`\b(?:100|[1-9]?[0-9])\b`)
+
+	// Используем регулярное выражение для поиска всех соответствий в строке
+	matches := re.FindAllString(answer, 1)
+
+	res, err := strconv.Atoi(matches[0])
 	if err != nil {
 		return 0, err
 	}
-	switch float {
-	case 1.0:
-		result = 1
-	case 0.9:
-		result = 9
-	case 0.8:
-		result = 8
-	case 0.7:
-		result = 7
-	case 0.6:
-		result = 6
-	case 0.5:
-		result = 5
-	case 0.4:
-		result = 4
-	case 0.3:
-		result = 3
-	case 0.2:
-		result = 2
-	case 0.1:
-		result = 1
-	case 0.0:
-		result = 0
-	default:
-		return 0, errors.New(fmt.Sprintf("unknown float: %.2f", float))
 
-	}
-	return result, nil
-
+	return res, nil
 }

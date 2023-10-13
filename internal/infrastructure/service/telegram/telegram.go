@@ -20,6 +20,7 @@ const (
 type ClientSource interface {
 	ContactSearch(query string) (*tg2.ContactsFound, error)
 	MessagesGetHistory(channel *tg2.Channel, limit int, AddOffset int) (tg2.MessagesMessagesClass, error)
+	GetMessagesForID(channel *tg2.Channel, iDs []int) (tg2.MessagesMessagesClass, error)
 }
 
 func NewTelegram(conf *config.Telegram) (ClientSource, error) {
@@ -81,6 +82,24 @@ func (t *Telegram) MessagesGetHistory(channel *tg2.Channel, limit int, AddOffset
 			AccessHash: channel.AccessHash},
 		Limit:     limit,
 		AddOffset: AddOffset,
+	})
+
+}
+
+func (t *Telegram) GetMessagesForID(channel *tg2.Channel, iDs []int) (tg2.MessagesMessagesClass, error) {
+	iDForRequest := make([]tg2.InputMessageClass, len(iDs))
+	for _, id := range iDs {
+		iDForRequest = append(iDForRequest, &tg2.InputMessageID{
+			ID: id,
+		})
+	}
+
+	return t.Client.ChannelsGetMessages(context.Background(), &tg2.ChannelsGetMessagesRequest{
+		Channel: &tg2.InputChannel{
+			ChannelID:  channel.ID,
+			AccessHash: channel.AccessHash,
+		},
+		ID: iDForRequest,
 	})
 
 }
