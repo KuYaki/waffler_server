@@ -1,6 +1,8 @@
 package service
 
 import (
+	"net/url"
+
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
@@ -9,7 +11,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/wrapper/language_model"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"net/url"
 )
 
 type WafflerServicer interface {
@@ -29,9 +30,6 @@ func NewWafflerService(storage storage.WafflerStorager, components *component.Co
 	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg}
 }
 
-var orderRecords = map[string]string{"score": "score ASC", "score_desc": "score DESC",
-	"time": "created_at ASC", "time_desc": "created_at DESC"}
-
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
 	scoreResponse := &message.ScoreResponse{
 		Cursor: &message.Cursor{
@@ -39,6 +37,11 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		},
 		Records: []message.Record{},
 	}
+	orders, err := convertRecordOrder(request.Order)
+	if err != nil {
+		return nil, err
+	}
+
 	records, err := u.storage.ListRecordsSourceID(request.SourceId)
 	if err != nil {
 		return nil, err
@@ -46,7 +49,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 	var racismRecords []models.RacismDTO
 	switch request.Type {
 	case models.Racism:
-		racismRecords, err = u.storage.ListRacismRecordsSourceIDCursor(request.SourceId, orderRecords[request.Order], request.Cursor.Offset, request.Limit)
+		racismRecords, err = u.storage.ListRacismRecordsSourceIDCursor(request.SourceId, orders, request.Cursor.Offset, request.Limit)
 		if err != nil {
 			return nil, err
 		}
@@ -374,20 +377,21 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 	return err
 }
 
-var orderSources = map[string]string{"name": "name ASC", "name_desc": "name DESC", "source": "source_type ASC", "source_desc": "source_type DESC",
-	"waffler": "waffler_score ASC", "waffler_desc": "waffler_score DESC", "racizm": "racism_score ASC", "racizm_desc": "racism_score DESC"}
-
 //  ToDo: racizm rename to racism
 
 func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
 	res := &message.SearchResponse{
 		Sources: make([]models.SourceDTO, 0, search.Limit),
 	}
-	var err error
+
+	orders, err := convertSourceOrder(search.Order)
+	if err != nil {
+		return nil, err
+	}
 
 	if search.Cursor.Partition == 0 {
 		res.Sources, err = s.storage.
-			SearchLikeBySourceName(search.QueryForName, search.SourceType, search.Cursor.Offset, orderSources[search.Order], search.Limit)
+			SearchLikeBySourceName(search.QueryForName, search.SourceType, search.Cursor.Offset, orders, search.Limit)
 
 		if err != nil {
 			return nil, err
@@ -405,7 +409,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 
 	if search.Cursor.Partition == 1 {
 		resURL, err := s.storage.
-			SearchLikeBySourceURLNotName(search.QueryForName, search.SourceType, search.Cursor.Offset, orderSources[search.Order], search.Limit)
+			SearchLikeBySourceURLNotName(search.QueryForName, search.SourceType, search.Cursor.Offset, orders, search.Limit)
 		if err != nil {
 			return nil, err
 		}
