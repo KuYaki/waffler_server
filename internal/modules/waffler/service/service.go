@@ -1,6 +1,8 @@
 package service
 
 import (
+	"net/url"
+
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
@@ -9,7 +11,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/modules/wrapper/language_model"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"net/url"
 )
 
 type WafflerServicer interface {
@@ -107,10 +108,9 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 
 	newRacismRecords := make([]models.RacismDTO, 0, len(dataTelegram.Records))
 	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
-	var existRasism = false
 	for _, r := range dataTelegram.Records {
 		tempRecord := r
-		existRasism = false
+		existRasism := false
 		for _, rasR := range listRascismRecords {
 			if tempRecord.ID == rasR.RecordID {
 				existRasism = true
@@ -169,13 +169,7 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 			return err
 		}
 
-		source.RacismScore = func() int {
-			score := 0
-			for _, r := range racismRecords {
-				score += r.Score
-			}
-			return score / len(racismRecords)
-		}()
+		source.RacismScore = averageRacismScore(racismRecords)
 
 		err = w.storage.UpdateSource(source)
 		if err != nil {
@@ -315,12 +309,13 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 				res, err := lanModel.ConstructQuestionGPT(text, search.ScoreType)
 				if res != nil {
 					newWafflerRecords = append(newWafflerRecords, models.WafflerDTO{
-						Score:          *res,
-						ParserType:     models.GPT3_5TURBO,
-						RecordIDBefore: tempRecord.ID,
-						RecordIDAfter:  tempRecord2.ID,
-						CreatedTsAfter: tempRecord.CreatedTs,
-						SourceID:       dataTelegram.Source.ID,
+						Score:           *res,
+						ParserType:      models.GPT3_5TURBO,
+						RecordIDBefore:  tempRecord.ID,
+						RecordIDAfter:   tempRecord2.ID,
+						CreatedTsBefore: tempRecord.CreatedTs,
+						CreatedTsAfter:  tempRecord2.CreatedTs,
+						SourceID:        dataTelegram.Source.ID,
 					})
 					return nil
 				} else {
@@ -356,13 +351,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 			return err
 		}
 
-		dataTelegram.Source.WafflerScore = func() int {
-			score := 0
-			for _, r := range wafflerRecords {
-				score += r.Score
-			}
-			return score / len(wafflerRecords)
-		}()
+		dataTelegram.Source.WafflerScore = averageWafflerScore(wafflerRecords)
 
 		err = w.storage.UpdateSource(dataTelegram.Source)
 		if err != nil {
