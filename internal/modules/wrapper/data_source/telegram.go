@@ -6,8 +6,8 @@ import (
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/go-faster/errors"
 	tg2 "github.com/gotd/td/tg"
-	"golang.org/x/exp/slices"
 	"log"
+	"sort"
 	"strings"
 	"time"
 )
@@ -19,7 +19,7 @@ type DataSource struct {
 }
 
 type DataSourcer interface {
-	ParseChatTelegram(query string, limit int, idMessages []int) (*DataTelegram, error)
+	ParseChatTelegram(query string, limit int, idMessages []models.RecordDTO) (*DataTelegram, error)
 	ContactSearch(query string) (*tg2.Channel, error)
 }
 
@@ -142,46 +142,53 @@ func (w *DataSource) parseChatTelegram(channel *tg2.Channel, limit int, sessionT
 //
 //}
 
-func (w *DataSource) ParseChatTelegram(query string, limit int, idMessages []int) (*DataTelegram, error) {
+func (w *DataSource) ParseChatTelegram(query string, limit int, recordDTOS []models.RecordDTO) (*DataTelegram, error) {
+	var newRecords []models.RecordDTO
 	var records = make([]models.RecordDTO, 0, limit)
 	var sessionTs = time.Now()
+	var err error
 	channel, err := w.ContactSearch(query)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(idMessages) == 0 {
-		newRecords, err := w.parseChatTelegram(channel, limit, sessionTs)
+	if len(recordDTOS) == 0 {
+		newRecords, err = w.parseChatTelegram(channel, limit, sessionTs)
 		if err != nil {
 			return nil, err
 		}
 		records = append(records, newRecords...)
 
 	} else {
-		idMessagesTelegram, err := w.getMessageForId(channel, 1, 0)
+		var messagesTelegramRaw tg2.MessagesMessagesClass
+		messagesTelegramRaw, err = w.client.MessagesGetHistoryTime(channel, 100, int(time.Now().Unix()))
 		if err != nil {
 			return nil, err
 		}
+		limit -= 100
+		if limit > 0 {
+			sort.Slice(recordDTOS, func(i, j int) bool {
+				return recordDTOS[i].ID > recordDTOS[j].ID
+			})
 
-		slices.SortStableFunc(idMessages, func(i, j int) bool {
-			return i > j
-		})
-
-		idMessagesForRequest := make([]int, 0, 50)
-		for idMess, i, indexIDMessages := idMessagesTelegram[0], 0, 0; i < limit; idMess, i = idMess+1, i+1 {
-			if idMess == idMessages[indexIDMessages] {
-				indexIDMessages++
-				continue
+			newRecords, err = messageToRecordDTO(messagesTelegramRaw, sessionTs, channel)
+			if err != nil {
+				return nil, err
 			}
-			idMessagesForRequest = append(idMessagesForRequest, idMess)
 
+			for recordDTOS[0].CreatedTs.After(newRecords[len(newRecords)-1].CreatedTs) {
+				messagesTelegramRaw, err = w.client.MessagesGetHistoryTime(channel, 100, int(newRecords[len(newRecords)-1].CreatedTs.Unix()))
+				if err != nil {
+					return nil, err
+				}
+				newRecords, err = messageToRecordDTO(messagesTelegramRaw, sessionTs, channel)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
-		mes, err := w.getMessagesForID(channel, idMessagesForRequest, sessionTs)
-		if err != nil {
-			return nil, err
-		}
-		records = append(records, mes...)
 
+		records = append(records, newRecords...)
 	}
 
 	return &DataTelegram{

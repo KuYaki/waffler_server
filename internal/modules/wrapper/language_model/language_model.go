@@ -78,6 +78,9 @@ func parseAnswerGPT(answer string) (int, error) {
 	// Используем регулярное выражение для поиска всех соответствий в строке
 	matches := re.FindAllString(answer, 1)
 
+	if len(matches) == 0 {
+		return -1, nil
+	}
 	res, err := strconv.Atoi(matches[0])
 	if err != nil {
 		return 0, err
