@@ -23,7 +23,7 @@ services:
     volumes:
       - db-data:/root/telegram
     env_file:
-      - ../.env
+      - .env
     ports:
       - ${HOST}:${DB_PORT}:${DB_PORT}
     networks:

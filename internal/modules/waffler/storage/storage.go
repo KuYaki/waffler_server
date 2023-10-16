@@ -10,12 +10,15 @@ type WafflerStorager interface {
 	CreateSource(*models.SourceDTO) error
 	CreateRecords(records []models.RecordDTO) error
 	CreateRacismRecords(racismRecords []models.RacismDTO) error
+	CreateWafflerRecords(racismRecords []models.WafflerDTO) error
 	SearchLikeBySourceURLNotName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error)
 	SearchLikeBySourceName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error)
 	SearchBySourceUrl(url string) (*models.SourceDTO, error)
 	UpdateSource(*models.SourceDTO) error
 	ListRecordsSourceID(idSource int) ([]models.RecordDTO, error)
 	ListRacismRecords(racismRecords *models.RacismDTO) ([]models.RacismDTO, error)
+	ListWafflerRecords(racismRecords *models.WafflerDTO) ([]models.WafflerDTO, error)
+
 	ListRecordsSourceIDCursor(idSource int, offset int, limit int) ([]models.RecordDTO, error)
 	ListRacismRecordsSourceIDCursor(idSource int, order string, offset int, limit int) ([]models.RacismDTO, error)
 }
@@ -53,9 +56,27 @@ func (s WafflerStorage) ListRacismRecords(racismRecords *models.RacismDTO) ([]mo
 
 	return records, nil
 }
+func (s WafflerStorage) ListWafflerRecords(racismRecords *models.WafflerDTO) ([]models.WafflerDTO, error) {
+	var records []models.WafflerDTO
+	err := s.conn.Where(racismRecords).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
 
 func (s WafflerStorage) CreateRacismRecords(racismRecords []models.RacismDTO) error {
 	err := s.conn.Create(racismRecords).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s WafflerStorage) CreateWafflerRecords(wafflerRecords []models.WafflerDTO) error {
+	err := s.conn.Create(wafflerRecords).Error
 	if err != nil {
 		return err
 	}
