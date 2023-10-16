@@ -3,8 +3,8 @@ services:
   ratesapi:
     container_name: ${APP_NAME}api
     build:
-      context: ..
-      dockerfile: ./Dockerfile
+      context: ../
+      dockerfile: ./deployments/Dockerfile
     restart: always
     volumes:
       - ../.env:/root/.env

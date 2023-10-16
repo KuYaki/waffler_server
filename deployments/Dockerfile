@@ -2,8 +2,11 @@
 
 FROM golang:1.21.1 as builder
 
-COPY .. /go/src/waffler/
 WORKDIR /go/src/waffler/
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download
+COPY .. .
 RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o waffler ./cmd/api
 
 FROM alpine:3.17.0 as production
