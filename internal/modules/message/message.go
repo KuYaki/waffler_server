@@ -1,8 +1,9 @@
 package message
 
 import (
-	"github.com/KuYaki/waffler_server/internal/models"
 	"time"
+
+	"github.com/KuYaki/waffler_server/internal/models"
 )
 
 type UserInfo struct {
@@ -56,7 +57,7 @@ type ScoreRequest struct {
 	Type     models.ScoreType `json:"score_type"`
 	Limit    int              `json:"limit"`
 	Cursor   Cursor           `json:"cursor"`
-	Order    string           `json:"order"`
+	Order    []string         `json:"order"`
 }
 
 type ScoreResponse struct {
@@ -83,7 +84,7 @@ type Search struct {
 	QueryForName string              `json:"query"`
 	Limit        int                 `json:"limit"`
 	Cursor       *Cursor             `json:"cursor"`
-	Order        string              `json:"order"`
+	Order        []string            `json:"order"`
 	SourceType   []models.SourceType `json:"source_type"`
 	ScoreType    []models.ScoreType  `json:"score_type"`
 }

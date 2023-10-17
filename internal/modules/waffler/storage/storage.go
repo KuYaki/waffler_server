@@ -1,9 +1,10 @@
 package storage
 
 import (
+	"strings"
+
 	"github.com/KuYaki/waffler_server/internal/models"
 	"gorm.io/gorm"
-	"strings"
 )
 
 type WafflerStorager interface {
@@ -11,8 +12,8 @@ type WafflerStorager interface {
 	CreateRecords(records []models.RecordDTO) error
 	CreateRacismRecords(racismRecords []models.RacismDTO) error
 	CreateWafflerRecords(racismRecords []models.WafflerDTO) error
-	SearchLikeBySourceURLNotName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error)
-	SearchLikeBySourceName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error)
+	SearchLikeBySourceURLNotName(search string, sourceType []models.SourceType, offset int, order []string, limit int) ([]models.SourceDTO, error)
+	SearchLikeBySourceName(search string, sourceType []models.SourceType, offset int, order []string, limit int) ([]models.SourceDTO, error)
 	SearchBySourceUrl(url string) (*models.SourceDTO, error)
 	UpdateSource(*models.SourceDTO) error
 	ListRecordsSourceID(idSource int) ([]models.RecordDTO, error)
@@ -20,7 +21,7 @@ type WafflerStorager interface {
 	ListWafflerRecords(racismRecords *models.WafflerDTO) ([]models.WafflerDTO, error)
 
 	ListRecordsSourceIDCursor(idSource int, offset int, limit int) ([]models.RecordDTO, error)
-	ListRacismRecordsSourceIDCursor(idSource int, order string, offset int, limit int) ([]models.RacismDTO, error)
+	ListRacismRecordsSourceIDCursor(idSource int, order []string, offset int, limit int) ([]models.RacismDTO, error)
 }
 
 func NewWafflerStorage(conn *gorm.DB) WafflerStorager {
@@ -31,14 +32,15 @@ type WafflerStorage struct {
 	conn *gorm.DB
 }
 
-func (s WafflerStorage) ListRacismRecordsSourceIDCursor(idSource int, order string, offset int, limit int) ([]models.RacismDTO, error) {
+func (s WafflerStorage) ListRacismRecordsSourceIDCursor(idSource int, order []string, offset int, limit int) ([]models.RacismDTO, error) {
 	var records []models.RacismDTO
 
 	querySQL := "source_id = ?"
 
 	var args = []interface{}{idSource}
 
-	err := s.conn.Order(order).Offset(offset).Limit(limit).
+	db := ApplyOrder(s.conn, order)
+	err := db.Offset(offset).Limit(limit).
 		Where(querySQL, args...).Find(&records).Error
 	if err != nil {
 		return nil, err
@@ -110,7 +112,7 @@ func (s WafflerStorage) CreateRecords(source []models.RecordDTO) error {
 
 	return nil
 }
-func (s WafflerStorage) SearchLikeBySourceName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error) {
+func (s WafflerStorage) SearchLikeBySourceName(search string, sourceType []models.SourceType, offset int, order []string, limit int) ([]models.SourceDTO, error) {
 	var sources []models.SourceDTO
 	var querySQL string
 	var args = make([]interface{}, 0, len(sourceType)+1)
@@ -123,7 +125,8 @@ func (s WafflerStorage) SearchLikeBySourceName(search string, sourceType []model
 		args = append(args, sourceType[0], sourceType[1])
 	}
 
-	err := s.conn.Order(order).Offset(offset).Limit(limit).
+	db := ApplyOrder(s.conn, order)
+	err := db.Offset(offset).Limit(limit).
 		Where(querySQL, args...).Find(&sources).Error
 	if err != nil {
 		return nil, err
@@ -132,7 +135,7 @@ func (s WafflerStorage) SearchLikeBySourceName(search string, sourceType []model
 	return sources, nil
 }
 
-func (s WafflerStorage) SearchLikeBySourceURLNotName(search string, sourceType []models.SourceType, offset int, order string, limit int) ([]models.SourceDTO, error) {
+func (s WafflerStorage) SearchLikeBySourceURLNotName(search string, sourceType []models.SourceType, offset int, order []string, limit int) ([]models.SourceDTO, error) {
 	var sources []models.SourceDTO
 	var querySQL string
 	var args = make([]interface{}, 0, len(sourceType)+2)
@@ -146,7 +149,8 @@ func (s WafflerStorage) SearchLikeBySourceURLNotName(search string, sourceType [
 		args = append(args, sourceType[0], sourceType[1])
 	}
 
-	err := s.conn.Order(order).Offset(offset).Limit(limit).
+	db := ApplyOrder(s.conn, order)
+	err := db.Offset(offset).Limit(limit).
 		Where(querySQL, args...).
 		Find(&sources).Error
 	if err != nil {
