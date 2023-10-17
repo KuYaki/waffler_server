@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/KuYaki/waffler_server/config"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/brianvoe/gofakeit/v6"
@@ -57,8 +58,8 @@ func TestDB(conn *gorm.DB) error {
 				Name:         gofakeit.BeerName(),
 				SourceType:   models.SourceType(gofakeit.Number(0, 1)),
 				SourceUrl:    gofakeit.URL(),
-				WafflerScore: gofakeit.Number(0, 10),
-				RacismScore:  gofakeit.Number(0, 10),
+				WafflerScore: gofakeit.Float64Range(0, 10),
+				RacismScore:  gofakeit.Float64Range(0, 10),
 			}
 			result = conn.Create(sourceNew)
 			if result.Error != nil {
