@@ -11,7 +11,7 @@ import (
 )
 
 type Components struct {
-	Conf         config.AppConf
+	Conf         *config.AppConf
 	TokenManager cryptography.TokenManager
 	Token        *middleware.Token
 	Responder    responder.Responder
@@ -21,7 +21,7 @@ type Components struct {
 	Tg           data_source.DataSourcer
 }
 
-func NewComponents(conf config.AppConf, tokenManager cryptography.TokenManager, token *middleware.Token, responder responder.Responder, decoder godecoder.Decoder, hash cryptography.Hasher, dataSource data_source.DataSourcer, logger *zap.Logger) *Components {
+func NewComponents(conf *config.AppConf, tokenManager cryptography.TokenManager, token *middleware.Token, responder responder.Responder, decoder godecoder.Decoder, hash cryptography.Hasher, dataSource data_source.DataSourcer, logger *zap.Logger) *Components {
 	return &Components{Conf: conf,
 		TokenManager: tokenManager,
 		Token:        token,

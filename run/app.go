@@ -47,14 +47,14 @@ type Bootstraper interface {
 
 // App - application structure
 type App struct {
-	conf   config.AppConf
+	conf   *config.AppConf
 	logger *zap.Logger
 	srv    server.Server
 	Sig    chan os.Signal
 }
 
 // NewApp - application builder
-func NewApp(conf config.AppConf, logger *zap.Logger) *App {
+func NewApp(conf *config.AppConf, logger *zap.Logger) *App {
 	return &App{conf: conf, logger: logger, Sig: make(chan os.Signal, 1)}
 }
 
