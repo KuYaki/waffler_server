@@ -19,11 +19,11 @@ jobs:
 
     services:
       postgres:
-        image: postgres:13
+        image: postgres:14
         env:
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: dbname
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: >-
@@ -44,16 +44,16 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
       
-    - name: test_compilation
-      run: go build -o test_compilation cmd/api/main.go
+      #    - name: test_compilation
+      #      run: go build -o test_compilation cmd/api/main.go
       
 #    - name: golangci-lint
 #      uses: golangci/golangci-lint-action@v3
 #      with:
 #        version: v1.54
-    
-    - name: run-test
-      run: go test -v ./...
+
+      #    - name: run-test
+      #      run: go test -v ./...
 
     - name: test integration
       run: go test -v -tags=integration ./...
