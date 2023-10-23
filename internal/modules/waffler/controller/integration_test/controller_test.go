@@ -4,14 +4,13 @@
 package integration_test_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	middleware "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
-	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
-	uservice "github.com/KuYaki/waffler_server/internal/modules/user/service"
-	wservice "github.com/KuYaki/waffler_server/internal/modules/waffler/service"
+	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/mocks"
-	"github.com/ptflp/godecoder"
-	"go.uber.org/zap"
+	"github.com/gotd/td/tg"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,12 +18,7 @@ import (
 
 func TestWaffl_Search(t *testing.T) {
 	type fields struct {
-		service     wservice.WafflerServicer
-		log         *zap.Logger
-		token       *middleware.Token
-		userService uservice.Userer
-		Responder   responder.Responder
-		Decoder     godecoder.Decoder
+		mocksArgs []mocks.Args
 	}
 	type args struct {
 		w http.ResponseWriter
@@ -39,9 +33,18 @@ func TestWaffl_Search(t *testing.T) {
 		// TODO: Add test cases.
 	}
 
-	srv := mocks.MockServer(t)
+	srv, srvComponents := mocks.NewMockServer(t)
+	ret := &tg.ContactsFound{Chats: []tg.ChatClass{&tg.Channel{Username: "maximkatz", Title: "Канал Максима Каца"}}}
+	srvComponents.TgClient.On("ContactSearch", "https://t.me/maximkatz").Return(ret, nil).Once()
 
-	req, err := http.NewRequest("GET", "/", nil)
+	body := message.SourceURL{SourceUrl: "https://t.me/maximkatz"}
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", "/source/info", &buf)
 	if err != nil {
 		t.Fatal(err)
 	}

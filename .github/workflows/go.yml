@@ -44,16 +44,16 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
       
-      #    - name: test_compilation
-      #      run: go build -o test_compilation cmd/api/main.go
+    - name: test_compilation
+      run: go build -o test_compilation cmd/api/main.go
       
 #    - name: golangci-lint
 #      uses: golangci/golangci-lint-action@v3
 #      with:
 #        version: v1.54
 
-      #    - name: run-test
-      #      run: go test -v ./...
+    - name: run-test
+      run: go test -v -tags=unit ./...
 
     - name: test integration
       run: go test -v -tags=integration ./...

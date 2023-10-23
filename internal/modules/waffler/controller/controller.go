@@ -33,6 +33,10 @@ type Waffl struct {
 	godecoder.Decoder
 }
 
+func (w *Waffl) GetField() service.WafflerServicer {
+	return w.service
+}
+
 func NewWaffl(service service.WafflerServicer, user service2.Userer, components *component.Components) Waffler {
 	return &Waffl{service: service,
 		log: components.Logger, token: components.Token, userService: user, Responder: components.Responder, Decoder: components.Decoder}

@@ -16,26 +16,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/ptflp/godecoder"
-	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
 	"testing"
 	"time"
 )
 
-type PostgreSQLContainer struct {
-	Cont     testcontainers.Container
-	ContInfo ContInfo
+type MockServer struct {
+	TgClient *telegram.ClientSource
 }
 
-type ContInfo struct {
-	UserName   string
-	Password   string
-	Host       string
-	MappedPort string
-	DbName     string
-}
-
-func MockServer(t *testing.T) *chi.Mux {
+func NewMockServer(t *testing.T) (*chi.Mux, *MockServer) {
 	z, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
@@ -74,16 +64,17 @@ func MockServer(t *testing.T) *chi.Mux {
 		},
 	}
 
-	srv := newMockApp(appConf, z, t)
+	srv, mS := newMockApp(appConf, z, t)
 
-	return srv
+	return srv, mS
 }
 
-func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) *chi.Mux {
+func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) (*chi.Mux, *MockServer) {
+	mS := &MockServer{}
 	conn, err := db.NewSqlDB(conf)
 	if err != nil {
 		logger.Fatal("app: db error", zap.Error(err))
-		return nil
+		return nil, nil
 	}
 	err = conn.AutoMigrate(
 		&models.UserDTO{},
@@ -97,19 +88,22 @@ func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) *chi.Mux
 		err = db.TestDB(conn)
 		if err != nil {
 			logger.Fatal("app: db test error", zap.Error(err))
-			return nil
+			return nil, nil
 		}
 	}
 
 	if err != nil {
 		logger.Fatal("app: db migration error", zap.Error(err))
-		return nil
+		return nil, nil
 	}
 	tg := telegram.NewClientSource(t)
 	if err != nil {
 		logger.Fatal("app: tg error", zap.Error(err))
-		return nil
+		return nil, nil
 	}
+
+	mS.TgClient = tg
+
 	dataSource := data_source.NewDataTelegram(tg)
 
 	storagesDB := storages.NewStorages(conn)
@@ -136,9 +130,10 @@ func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) *chi.Mux
 		hash, dataSource, logger)
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
+
 	// init router
 	r := router.NewApiRouter(controller, components)
 
-	return r
+	return r, mS
 
 }
