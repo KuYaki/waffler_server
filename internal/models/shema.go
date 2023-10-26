@@ -60,6 +60,7 @@ type SourceType int
 const (
 	Telegram SourceType = iota
 	Youtube
+	Unknown
 )
 
 type ParserType int

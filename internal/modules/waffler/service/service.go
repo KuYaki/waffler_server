@@ -30,39 +30,58 @@ func NewWafflerService(storage storage.WafflerStorager, components *component.Co
 	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg}
 }
 
+// Score processes a scoring request based on the given criteria, primarily the SourceID.
+// It fetches and returns the relevant records with their associated scores.
+//
+// Parameters:
+// - request: A pointer to the ScoreRequest object containing the necessary details for the scoring.
+//
+// Returns:
+// - A pointer to the ScoreResponse object containing the results of the scoring operation.
+// - An error if any occurs during the operation.
 func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
+
+	// Initializing the scoreResponse object with cursor details and an empty records slice
 	scoreResponse := &message.ScoreResponse{
 		Cursor: &message.Cursor{
 			Offset: request.Cursor.Offset,
 		},
 		Records: []message.Record{},
 	}
+
+	// Convert the order provided in the request to the required type
 	orders, err := convertRecordOrder(request.Order)
 	if err != nil {
 		return nil, err
 	}
 
+	// Fetch all the records based on the SourceID provided in the request
 	records, err := u.storage.ListRecordsSourceID(request.SourceId)
 	if err != nil {
 		return nil, err
 	}
+
 	var racismRecords []models.RacismDTO
+
+	// Check the type provided in the request and fetch the corresponding records
 	switch request.Type {
 	case models.Racism:
 		racismRecords, err = u.storage.ListRacismRecordsSourceIDCursor(request.SourceId, orders, request.Cursor.Offset, request.Limit)
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
+	// If there are no racismRecords, then set the cursor to nil
 	if len(racismRecords) == 0 {
 		scoreResponse.Cursor = nil
-
 	} else {
+		// Update the cursor's offset based on the number of records
 		scoreResponse.Cursor.Offset += len(records)
 
+		// Allocate space for the records to be appended to the response
 		scoreResponse.Records = make([]message.Record, 0, len(records))
+		// Iterate through the racismRecords and map them to the response's Records slice
 		for i := range racismRecords {
 			scoreResponse.Records = append(scoreResponse.Records, message.Record{
 				RecordText: records[i].RecordText,
@@ -93,6 +112,9 @@ func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, err
 
 		res.Name = channel.Title
 		res.Type = models.Telegram
+	default:
+		res.Name = "Unknown"
+		res.Type = models.Unknown
 	}
 
 	return res, nil
