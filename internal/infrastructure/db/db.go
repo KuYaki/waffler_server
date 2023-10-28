@@ -58,8 +58,8 @@ func TestDB(conn *gorm.DB) error {
 				Name:         gofakeit.BeerName(),
 				SourceType:   models.SourceType(gofakeit.Number(0, 1)),
 				SourceUrl:    gofakeit.URL(),
-				WafflerScore: gofakeit.Float64Range(0, 10),
-				RacismScore:  gofakeit.Float64Range(0, 10),
+				WafflerScore: gofakeit.Float64Range(0, 100),
+				RacismScore:  gofakeit.Float64Range(0, 100),
 			}
 			result = conn.Create(sourceNew)
 			if result.Error != nil {
