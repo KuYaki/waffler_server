@@ -40,6 +40,7 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 		r.HandleFunc("/ws", sourceController.WsTest)
 		r.Post("/score", sourceController.Score)
 		r.Post("/info", sourceController.Info)
+		r.Post("/price", sourceController.Price)
 	})
 
 	return r

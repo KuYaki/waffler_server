@@ -1,6 +1,8 @@
 package service
 
-import "errors"
+import (
+	"errors"
+)
 
 var badOrderParams = errors.New("Incorrect order parameters")
 
@@ -60,4 +62,25 @@ func convertSourceOrder(order []string) ([]string, error) {
 		newOrder = append(newOrder, val)
 	}
 	return newOrder, nil
+}
+
+const wafflerLimitFree = 20
+const wafflerMaxLimit = 300
+const racismLimitFree = 100
+
+func priceWaffler(limit int) float64 {
+	if limit <= wafflerLimitFree {
+		return 0
+	}
+	if limit >= wafflerMaxLimit {
+		limit = wafflerMaxLimit
+	}
+	return float64(limit-wafflerLimitFree) * 0.01 * 20
+}
+
+func priceRacism(limit int) float64 {
+	if limit <= racismLimitFree {
+		return 0
+	}
+	return float64(limit-racismLimitFree) * 0.01
 }
