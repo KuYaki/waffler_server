@@ -66,7 +66,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		for i := range racismRecords {
 			scoreResponse.Records = append(scoreResponse.Records, message.Record{
 				RecordText: records[i].RecordText,
-				Score:      racismRecords[i].Score,
+				Score:      int(racismRecords[i].Score.Int64),
 				Timestamp:  racismRecords[i].CreatedTs,
 			})
 		}
@@ -126,8 +126,12 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 			var err error
 			res, err := lanModel.ConstructQuestionGPT(tempRecord.RecordText, search.ScoreType)
 			if res != nil {
+				score := models.NewNullInt64(int64(*res))
+				if score.Int64 < 0 {
+					score = models.NullInt64{}
+				}
 				newRacismRecords = append(newRacismRecords, models.RacismDTO{
-					Score:      *res,
+					Score:      score,
 					ParserType: models.GPT3_5TURBO,
 					CreatedTs:  tempRecord.CreatedTs,
 					RecordID:   tempRecord.ID,
@@ -310,8 +314,12 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 				var err error
 				res, err := lanModel.ConstructQuestionGPT(text, search.ScoreType)
 				if res != nil {
+					score := models.NewNullInt64(int64(*res))
+					if score.Int64 < 0 {
+						score = models.NullInt64{}
+					}
 					newWafflerRecords = append(newWafflerRecords, models.WafflerDTO{
-						Score:           *res,
+						Score:           score,
 						ParserType:      models.GPT3_5TURBO,
 						RecordIDBefore:  tempRecord.ID,
 						RecordIDAfter:   tempRecord2.ID,

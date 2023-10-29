@@ -20,19 +20,25 @@ const (
 // This means that after 10 years there is no dropoff in weights.
 // To amplify higher scores we multiply weights by p^(1 - (s / MAX)).
 // Then we return the sum of weighted scores divided by the sum of the weights.
-func averageRacismScore(records []models.RacismDTO) float64 {
+func averageRacismScore(records []models.RacismDTO) models.NullFloat64 {
 	currentTime := time.Now().UnixMilli()
 	var sumScores float64
 	var sumWeights float64
 
 	for _, r := range records {
+		if !r.Score.Valid {
+			continue
+		}
 		weight := 1 / (1 + q*math.Min(float64(currentTime)-float64(r.CreatedTs.UnixMilli()), T1)/float64(T1))
-		weight = weight * math.Pow(p, 1-(float64(r.Score)/MAX))
-		sumScores += weight * float64(r.Score)
+		weight = weight * math.Pow(p, 1-(float64(r.Score.Int64)/MAX))
+		sumScores += weight * float64(r.Score.Int64)
 		sumWeights += weight
 	}
 
-	return sumScores / sumWeights
+	if sumWeights == 0 {
+		return models.NullFloat64{}
+	}
+	return models.NewNullFloat64(sumScores / sumWeights)
 }
 
 // Weights are normalized from 1 to 0.1 with the coefficients 1/(1 + q*x) and
@@ -41,19 +47,25 @@ func averageRacismScore(records []models.RacismDTO) float64 {
 // Then to re-normalize we take the geometric mean of the 2 weights.
 // To amplify higher scores we multiply weights by p^(1 - (s / MAX)).
 // Then we return the sum of weighted scores divided by the sum of the weights.
-func averageWafflerScore(records []models.WafflerDTO) float64 {
+func averageWafflerScore(records []models.WafflerDTO) models.NullFloat64 {
 	currentTime := time.Now().UnixMilli()
 	var sumScores float64
 	var sumWeights float64
 
 	for _, r := range records {
+		if !r.Score.Valid {
+			continue
+		}
 		weight_1 := 1 / (1 + q*math.Min(float64(currentTime)-float64(r.CreatedTsAfter.UnixMilli()), T1)/float64(T1))
 		weight_2 := 1 / (1 + q*math.Min(float64(r.CreatedTsAfter.UnixMilli())-float64(r.CreatedTsBefore.UnixMilli()), T1)/float64(T1))
 		weight := math.Sqrt(weight_1 * weight_2)
-		weight = weight * math.Pow(p, 1-(float64(r.Score)/MAX))
-		sumScores += weight * float64(r.Score)
+		weight = weight * math.Pow(p, 1-(float64(r.Score.Int64)/MAX))
+		sumScores += weight * float64(r.Score.Int64)
 		sumWeights += weight
 	}
 
-	return sumScores / sumWeights
+	if sumWeights == 0 {
+		return models.NullFloat64{}
+	}
+	return models.NewNullFloat64(sumScores / sumWeights)
 }

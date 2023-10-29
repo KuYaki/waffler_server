@@ -53,15 +53,72 @@ func TestDB(conn *gorm.DB) error {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		for i := 0; i < 100; i++ {
+		for i := 0; i < 20; i++ {
 			sourceNew := &models.SourceDTO{
 				Name:         gofakeit.BeerName(),
 				SourceType:   models.SourceType(gofakeit.Number(0, 1)),
 				SourceUrl:    gofakeit.URL(),
-				WafflerScore: gofakeit.Float64Range(0, 100),
-				RacismScore:  gofakeit.Float64Range(0, 100),
+				WafflerScore: models.NewNullFloat64(gofakeit.Float64Range(0, 100)),
+				RacismScore:  models.NewNullFloat64(gofakeit.Float64Range(0, 100)),
 			}
 			result = conn.Create(sourceNew)
+			if result.Error != nil {
+				return result.Error
+			}
+
+		}
+		for i := 0; i < 20; i++ {
+			sourceNew := &models.SourceDTO{
+				Name:         gofakeit.BeerName(),
+				SourceType:   models.SourceType(gofakeit.Number(0, 1)),
+				SourceUrl:    gofakeit.URL(),
+				WafflerScore: models.NewNullFloat64(gofakeit.Float64Range(0, 100)),
+			}
+			result = conn.Create(sourceNew)
+			if result.Error != nil {
+				return result.Error
+			}
+
+		}
+		for i := 0; i < 20; i++ {
+			sourceNew := &models.SourceDTO{
+				Name:        gofakeit.BeerName(),
+				SourceType:  models.SourceType(gofakeit.Number(0, 1)),
+				SourceUrl:   gofakeit.URL(),
+				RacismScore: models.NewNullFloat64(gofakeit.Float64Range(0, 100)),
+			}
+			result = conn.Create(sourceNew)
+			if result.Error != nil {
+				return result.Error
+			}
+
+		}
+	}
+
+	racism := &models.RacismDTO{}
+	result = conn.Find(racism)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		for i := 0; i < 10; i++ {
+			racismNew := &models.RacismDTO{
+				SourceID: gofakeit.Number(1, 3),
+			}
+
+			result = conn.Create(racismNew)
+			if result.Error != nil {
+				return result.Error
+			}
+
+		}
+		for i := 0; i < 10; i++ {
+			racismNew := &models.RacismDTO{
+				SourceID: gofakeit.Number(1, 3),
+				Score:    models.NewNullInt64(int64(gofakeit.Number(0, 100))),
+			}
+
+			result = conn.Create(racismNew)
 			if result.Error != nil {
 				return result.Error
 			}
