@@ -2,6 +2,7 @@ package service
 
 import (
 	"net/url"
+	"sync"
 
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/models"
@@ -108,13 +109,13 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 		return err
 	}
 
-	newRacismRecords := make([]models.RacismDTO, 0, len(dataTelegram.Records))
+	newRacismRecords := make([]models.RacismDTO, len(dataTelegram.Records))
 	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
-	for _, r := range dataTelegram.Records {
-		tempRecord := r
+	for i, r := range dataTelegram.Records {
+		i, r := i, r
 		existRasism := false
 		for _, rasR := range listRascismRecords {
-			if tempRecord.ID == rasR.RecordID {
+			if r.ID == rasR.RecordID {
 				existRasism = true
 				break
 			}
@@ -124,15 +125,15 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 		}
 		g.Go(func() error {
 			var err error
-			res, err := lanModel.ConstructQuestionGPT(tempRecord.RecordText, search.ScoreType)
+			res, err := lanModel.ConstructQuestionGPT(r.RecordText, search.ScoreType)
 			if res != nil {
-				newRacismRecords = append(newRacismRecords, models.RacismDTO{
+				newRacismRecords[i] = models.RacismDTO{
 					Score:      *res,
 					ParserType: models.GPT3_5TURBO,
-					CreatedTs:  tempRecord.CreatedTs,
-					RecordID:   tempRecord.ID,
+					CreatedTs:  r.CreatedTs,
+					RecordID:   r.ID,
 					SourceID:   dataTelegram.Source.ID,
-				})
+				}
 				return nil
 			} else {
 				if err != nil {
@@ -278,23 +279,28 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 	return err
 }
 
+type wafflerRecords struct {
+	sync.Mutex
+	records []models.WafflerDTO
+}
+
 func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, dataTelegram *data_source.DataTelegram) error {
 	g := errgroup.Group{}
 	g.SetLimit(20)
 
-	newWafflerRecords := make([]models.WafflerDTO, 0, len(dataTelegram.Records))
+	newWafflerRecords := wafflerRecords{}
 	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
 	for _, r := range dataTelegram.Records {
-		tempRecord := r
+		r := r
 		for _, r2 := range dataTelegram.Records {
-			if tempRecord.RecordText == r2.RecordText {
+			if r.RecordText == r2.RecordText || r2.CreatedTs.Before(r.CreatedTs) {
 				continue
 			}
-			tempRecord2 := r2
+			r2 := r2
 
 			records, err := w.storage.ListWafflerRecords(&models.WafflerDTO{
-				RecordIDBefore: tempRecord.ID,
-				RecordIDAfter:  tempRecord2.ID,
+				RecordIDBefore: r.ID,
+				RecordIDAfter:  r2.ID,
 			})
 			if err != nil {
 				w.log.Error("error: search", zap.Error(err))
@@ -304,19 +310,21 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 				continue
 			}
 
-			text := tempRecord.RecordText + " и " + tempRecord2.RecordText
+			text := r.RecordText + " и " + r2.RecordText
 
 			g.Go(func() error {
 				var err error
 				res, err := lanModel.ConstructQuestionGPT(text, search.ScoreType)
 				if res != nil {
-					newWafflerRecords = append(newWafflerRecords, models.WafflerDTO{
+					newWafflerRecords.Lock()
+					defer newWafflerRecords.Unlock()
+					newWafflerRecords.records = append(newWafflerRecords.records, models.WafflerDTO{
 						Score:           *res,
 						ParserType:      models.GPT3_5TURBO,
-						RecordIDBefore:  tempRecord.ID,
-						RecordIDAfter:   tempRecord2.ID,
-						CreatedTsBefore: tempRecord.CreatedTs,
-						CreatedTsAfter:  tempRecord2.CreatedTs,
+						RecordIDBefore:  r.ID,
+						RecordIDAfter:   r.ID,
+						CreatedTsBefore: r.CreatedTs,
+						CreatedTsAfter:  r2.CreatedTs,
 						SourceID:        dataTelegram.Source.ID,
 					})
 					return nil
@@ -339,7 +347,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 		return err
 	}
 
-	err = w.storage.CreateWafflerRecords(newWafflerRecords)
+	err = w.storage.CreateWafflerRecords(newWafflerRecords.records)
 	if err != nil {
 		w.log.Error("error: search", zap.Error(err))
 		return err
