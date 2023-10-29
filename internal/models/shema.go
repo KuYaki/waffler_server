@@ -11,12 +11,12 @@ type UserDTO struct {
 }
 
 type SourceDTO struct {
-	ID           int        `json:"id,omitempty" gorm:"primaryKey"`
-	Name         string     `json:"name"`
-	SourceType   SourceType `json:"source_type"`
-	SourceUrl    string     `json:"source_url"`
-	WafflerScore float64    `json:"waffler_score"`
-	RacismScore  float64    `json:"racism_score"`
+	ID           int         `json:"id,omitempty" gorm:"primaryKey"`
+	Name         string      `json:"name"`
+	SourceType   SourceType  `json:"source_type"`
+	SourceUrl    string      `json:"source_url"`
+	WafflerScore NullFloat64 `json:"waffler_score"`
+	RacismScore  NullFloat64 `json:"racism_score"`
 }
 
 type RecordDTO struct {
@@ -30,7 +30,7 @@ type RecordDTO struct {
 
 type WafflerDTO struct {
 	ID              int        `json:"id,omitempty" gorm:"primaryKey"`
-	Score           int        `json:"score"`
+	Score           NullInt64  `json:"score"`
 	ParserType      ParserType `json:"parser"`
 	RecordIDBefore  int        `json:"record_id_before"`
 	RecordIDAfter   int        `json:"record_id_after"`
@@ -41,7 +41,7 @@ type WafflerDTO struct {
 
 type RacismDTO struct {
 	ID         int        `json:"id,omitempty" gorm:"primaryKey"`
-	Score      int        `json:"score"`
+	Score      NullInt64  `json:"score"`
 	ParserType ParserType `json:"score_type"`
 	CreatedTs  time.Time  `json:"created_ts"`
 	RecordID   int        `json:"record_id"`
