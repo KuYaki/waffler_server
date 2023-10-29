@@ -18,7 +18,7 @@ type WafflerServicer interface {
 	Search(search *message.Search) (*message.SearchResponse, error)
 	InfoSource(urlSearch string) (*message.InfoRequest, error)
 	Score(request *message.ScoreRequest) (*message.ScoreResponse, error)
-	ParseSource(search *message.ParserRequest) error
+	ParseSource(search *message.ParserRequest, updateChan chan<- bool) error
 }
 
 type WafflerService struct {
@@ -99,7 +99,7 @@ func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, err
 	return res, nil
 }
 
-func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, dataTelegram *data_source.DataTelegram) error {
+func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, dataTelegram *data_source.DataTelegram, updateChan chan<- bool) error {
 	g := errgroup.Group{}
 	g.SetLimit(20)
 
@@ -121,6 +121,7 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 			}
 		}
 		if existRasism {
+			updateChan <- true
 			continue
 		}
 		g.Go(func() error {
@@ -134,6 +135,7 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 					RecordID:   r.ID,
 					SourceID:   dataTelegram.Source.ID,
 				}
+				updateChan <- true
 				return nil
 			} else {
 				if err != nil {
@@ -184,7 +186,7 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 	return err
 }
 
-func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
+func (w *WafflerService) ParseSource(search *message.ParserRequest, updateChan chan<- bool) error {
 	var limit = 20 // TODO: search.Limit
 	var source *models.SourceDTO
 	var records []models.RecordDTO
@@ -269,10 +271,10 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 
 	switch search.ScoreType {
 	case models.Racism:
-		err = w.parseSourceTypeRacism(search, dataTelegram)
+		err = w.parseSourceTypeRacism(search, dataTelegram, updateChan)
 
 	case models.Waffler:
-		err = w.parseSourceTypeWaffler(search, dataTelegram)
+		err = w.parseSourceTypeWaffler(search, dataTelegram, updateChan)
 
 	}
 
@@ -284,7 +286,7 @@ type wafflerRecords struct {
 	records []models.WafflerDTO
 }
 
-func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, dataTelegram *data_source.DataTelegram) error {
+func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, dataTelegram *data_source.DataTelegram, updateChan chan<- bool) error {
 	g := errgroup.Group{}
 	g.SetLimit(20)
 
@@ -307,6 +309,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 				return err
 			}
 			if len(records) != 0 {
+				updateChan <- true
 				continue
 			}
 
@@ -327,6 +330,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 						CreatedTsAfter:  r2.CreatedTs,
 						SourceID:        dataTelegram.Source.ID,
 					})
+					updateChan <- true
 					return nil
 				} else {
 					if err != nil {

@@ -1,9 +1,12 @@
 package controller
 
 import (
+	"fmt"
+
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	middleware "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
+	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	service2 "github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
@@ -131,25 +134,56 @@ func (wa *Waffl) Info(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
+	// Upgrade connection to websocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		wa.Responder.ErrorInternal(w, err)
+		return
+	}
+	defer conn.Close()
+
+	// Read request data from connection
 	var Parser *message.ParserRequest
-	err := wa.Decoder.Decode(r.Body, &Parser)
+	err = conn.ReadJSON(&Parser)
 	if err != nil {
 		wa.ErrorBadRequest(w, err)
 		return
 	}
 
-	if Parser.Parser.Token == "" || Parser.Parser.Type == "" {
+	if Parser.Parser == nil || Parser.Parser.Token == "" || Parser.Parser.Type == "" {
 		wa.Responder.ErrorBadRequest(w, err)
 		return
 	}
 
-	err = wa.service.ParseSource(Parser)
+	var processedRecords float64
+	var maxRecords int
+
+	if Parser.ScoreType == models.Racism {
+		maxRecords = Parser.Limit
+	}
+	if Parser.ScoreType == models.Waffler {
+		maxRecords = Parser.Limit * (Parser.Limit - 1) / 2
+	}
+
+	// Channel will be written to each time a record is processed
+	updateChan := make(chan bool, maxRecords)
+
+	err = wa.service.ParseSource(Parser, updateChan)
 	if err != nil {
 		wa.Responder.ErrorInternal(w, err)
 		return
 	}
 
-	wa.OutputJSON(w, nil)
+	for i := 0; i < maxRecords; i++ {
+		<-updateChan
+		processedRecords++
+		progress := fmt.Sprintf("%.2f", processedRecords/float64(maxRecords))
+		err = conn.WriteMessage(websocket.TextMessage, []byte(progress)) // Send progress status to client
+		if err != nil {
+			wa.Responder.ErrorInternal(w, err)
+			return
+		}
+	}
 }
 func (wa *Waffl) Hello(w http.ResponseWriter, r *http.Request) {
 	wa.Responder.OutputJSON(w, "Hello, world!")

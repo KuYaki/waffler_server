@@ -31,6 +31,7 @@ type ParserRequest struct {
 	SourceURL string           `json:"source_url"`
 	ScoreType models.ScoreType `json:"score_type"`
 	Parser    *Parser          `json:"parser"`
+	Limit     int              `json:"limit"`
 	ClientID  string           `json:"client_id"`
 }
 
