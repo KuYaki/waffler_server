@@ -329,7 +329,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 					if score.Int64 < 0 {
 						score = models.NullInt64{}
 					}
-					newWafflerRecords.records = append(newWafflerRecords, models.WafflerDTO{
+					newWafflerRecords.records = append(newWafflerRecords.records, models.WafflerDTO{
 						Score:           score,
 						ParserType:      models.GPT3_5TURBO,
 						RecordIDBefore:  r.ID,
