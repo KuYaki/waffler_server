@@ -95,3 +95,16 @@ type SourceParse struct {
 	ScoreType string `json:"score_type"`
 	Parser    `json:"parser"`
 }
+
+type PriceRequest struct {
+	SourceUrl string           `json:"source_url"`
+	ScoreType models.ScoreType `json:"score_type"`
+	Parser    Parser           `json:"parser"`
+	Limit     int              `json:"limit"`
+	Currency  string           `json:"currency"`
+}
+
+type PriceResponse struct {
+	Price    string `json:"price"`
+	Currency string `json:"currency"`
+}
