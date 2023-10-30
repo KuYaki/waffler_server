@@ -21,6 +21,7 @@ type Waffler interface {
 	Score(w http.ResponseWriter, r *http.Request)
 	Info(w http.ResponseWriter, r *http.Request)
 	Parse(w http.ResponseWriter, r *http.Request)
+	Price(w http.ResponseWriter, r *http.Request)
 	WsTest(w http.ResponseWriter, r *http.Request)
 }
 
@@ -154,4 +155,27 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 func (wa *Waffl) Hello(w http.ResponseWriter, r *http.Request) {
 	wa.Responder.OutputJSON(w, "Hello, world!")
 
+}
+
+func (wa *Waffl) Price(w http.ResponseWriter, r *http.Request) {
+	var priceRequest *message.PriceRequest
+	err := wa.Decoder.Decode(r.Body, &priceRequest)
+	if err != nil {
+		wa.ErrorBadRequest(w, err)
+		return
+	}
+
+	err = ValidatePriceRequest(*priceRequest)
+	if err != nil {
+		wa.ErrorBadRequest(w, err)
+		return
+	}
+
+	priceResponse, err := wa.service.PriceSource(priceRequest)
+	if err != nil {
+		wa.Responder.ErrorInternal(w, err)
+		return
+	}
+
+	wa.OutputJSON(w, priceResponse)
 }

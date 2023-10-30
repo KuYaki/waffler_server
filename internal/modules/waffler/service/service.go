@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
@@ -18,6 +19,7 @@ type WafflerServicer interface {
 	InfoSource(urlSearch string) (*message.InfoRequest, error)
 	Score(request *message.ScoreRequest) (*message.ScoreResponse, error)
 	ParseSource(search *message.ParserRequest) error
+	PriceSource(request *message.PriceRequest) (*message.PriceResponse, error)
 }
 
 type WafflerService struct {
@@ -422,4 +424,28 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	res.Cursor = search.Cursor
 
 	return res, nil
+}
+
+func (s *WafflerService) PriceSource(request *message.PriceRequest) (*message.PriceResponse, error) {
+	response := message.PriceResponse{Currency: request.Currency}
+	var price float64
+
+	switch request.ScoreType {
+	case models.Waffler:
+		price = priceWaffler(request.Limit)
+	case models.Racism:
+		price = priceRacism(request.Limit)
+	}
+
+	if request.Currency == "RUB" {
+		price *= 100
+	}
+
+	if request.Parser.Type == "GPT" {
+		price /= 2
+	}
+
+	response.Price = fmt.Sprintf("%.3f", price)
+
+	return &response, nil
 }
