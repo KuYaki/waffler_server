@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/url"
+	"sync"
 
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	"github.com/KuYaki/waffler_server/internal/models"
@@ -18,7 +19,7 @@ type WafflerServicer interface {
 	Search(search *message.Search) (*message.SearchResponse, error)
 	InfoSource(urlSearch string) (*message.InfoRequest, error)
 	Score(request *message.ScoreRequest) (*message.ScoreResponse, error)
-	ParseSource(search *message.ParserRequest) error
+	ParseSource(search *message.ParserRequest, updateChan chan<- bool) error
 	PriceSource(request *message.PriceRequest) (*message.PriceResponse, error)
 }
 
@@ -100,7 +101,7 @@ func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, err
 	return res, nil
 }
 
-func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, dataTelegram *data_source.DataTelegram) error {
+func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, dataTelegram *data_source.DataTelegram, updateChan chan<- bool) error {
 	g := errgroup.Group{}
 	g.SetLimit(20)
 
@@ -110,35 +111,37 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 		return err
 	}
 
-	newRacismRecords := make([]models.RacismDTO, 0, len(dataTelegram.Records))
+	newRacismRecords := make([]models.RacismDTO, len(dataTelegram.Records))
 	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
-	for _, r := range dataTelegram.Records {
-		tempRecord := r
+	for i, r := range dataTelegram.Records {
+		i, r := i, r
 		existRasism := false
 		for _, rasR := range listRascismRecords {
-			if tempRecord.ID == rasR.RecordID {
+			if r.ID == rasR.RecordID {
 				existRasism = true
 				break
 			}
 		}
 		if existRasism {
+			updateChan <- true
 			continue
 		}
 		g.Go(func() error {
 			var err error
-			res, err := lanModel.ConstructQuestionGPT(tempRecord.RecordText, search.ScoreType)
+			res, err := lanModel.ConstructQuestionGPT(r.RecordText, search.ScoreType)
 			if res != nil {
 				score := models.NewNullInt64(int64(*res))
 				if score.Int64 < 0 {
 					score = models.NullInt64{}
 				}
-				newRacismRecords = append(newRacismRecords, models.RacismDTO{
+				newRacismRecords[i] = models.RacismDTO{
 					Score:      score,
 					ParserType: models.GPT3_5TURBO,
-					CreatedTs:  tempRecord.CreatedTs,
-					RecordID:   tempRecord.ID,
+					CreatedTs:  r.CreatedTs,
+					RecordID:   r.ID,
 					SourceID:   dataTelegram.Source.ID,
-				})
+				}
+				updateChan <- true
 				return nil
 			} else {
 				if err != nil {
@@ -189,7 +192,7 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 	return err
 }
 
-func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
+func (w *WafflerService) ParseSource(search *message.ParserRequest, updateChan chan<- bool) error {
 	var limit = 20 // TODO: search.Limit
 	var source *models.SourceDTO
 	var records []models.RecordDTO
@@ -274,61 +277,70 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 
 	switch search.ScoreType {
 	case models.Racism:
-		err = w.parseSourceTypeRacism(search, dataTelegram)
+		err = w.parseSourceTypeRacism(search, dataTelegram, updateChan)
 
 	case models.Waffler:
-		err = w.parseSourceTypeWaffler(search, dataTelegram)
+		err = w.parseSourceTypeWaffler(search, dataTelegram, updateChan)
 
 	}
 
 	return err
 }
 
-func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, dataTelegram *data_source.DataTelegram) error {
+type wafflerRecords struct {
+	sync.Mutex
+	records []models.WafflerDTO
+}
+
+func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, dataTelegram *data_source.DataTelegram, updateChan chan<- bool) error {
 	g := errgroup.Group{}
 	g.SetLimit(20)
 
-	newWafflerRecords := make([]models.WafflerDTO, 0, len(dataTelegram.Records))
+	newWafflerRecords := wafflerRecords{}
 	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
 	for _, r := range dataTelegram.Records {
-		tempRecord := r
+		r := r
 		for _, r2 := range dataTelegram.Records {
-			if tempRecord.RecordText == r2.RecordText {
+			if r.RecordText == r2.RecordText || r2.CreatedTs.Before(r.CreatedTs) {
 				continue
 			}
-			tempRecord2 := r2
+			r2 := r2
 
 			records, err := w.storage.ListWafflerRecords(&models.WafflerDTO{
-				RecordIDBefore: tempRecord.ID,
-				RecordIDAfter:  tempRecord2.ID,
+				RecordIDBefore: r.ID,
+				RecordIDAfter:  r2.ID,
 			})
 			if err != nil {
 				w.log.Error("error: search", zap.Error(err))
 				return err
 			}
 			if len(records) != 0 {
+				updateChan <- true
 				continue
 			}
 
-			text := tempRecord.RecordText + " и " + tempRecord2.RecordText
+			text := r.RecordText + " и " + r2.RecordText
 
 			g.Go(func() error {
 				var err error
 				res, err := lanModel.ConstructQuestionGPT(text, search.ScoreType)
 				if res != nil {
+					newWafflerRecords.Lock()
+					defer newWafflerRecords.Unlock()
 					score := models.NewNullInt64(int64(*res))
 					if score.Int64 < 0 {
 						score = models.NullInt64{}
 					}
-					newWafflerRecords = append(newWafflerRecords, models.WafflerDTO{
+					newWafflerRecords.records = append(newWafflerRecords.records, models.WafflerDTO{
 						Score:           score,
 						ParserType:      models.GPT3_5TURBO,
-						RecordIDBefore:  tempRecord.ID,
-						RecordIDAfter:   tempRecord2.ID,
-						CreatedTsBefore: tempRecord.CreatedTs,
-						CreatedTsAfter:  tempRecord2.CreatedTs,
+						RecordIDBefore:  r.ID,
+						RecordIDAfter:   r.ID,
+						CreatedTsBefore: r.CreatedTs,
+						CreatedTsAfter:  r2.CreatedTs,
 						SourceID:        dataTelegram.Source.ID,
 					})
+					updateChan <- true
 					return nil
 				} else {
 					if err != nil {
@@ -349,7 +361,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 		return err
 	}
 
-	err = w.storage.CreateWafflerRecords(newWafflerRecords)
+	err = w.storage.CreateWafflerRecords(newWafflerRecords.records)
 	if err != nil {
 		w.log.Error("error: search", zap.Error(err))
 		return err
