@@ -10,19 +10,32 @@ import (
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/KuYaki/waffler_server/internal/modules/wrapper/data_source"
+	"github.com/KuYaki/waffler_server/internal/modules/wrapper/language_model"
 	"github.com/KuYaki/waffler_server/internal/router"
 	"github.com/KuYaki/waffler_server/internal/storages"
+	"github.com/KuYaki/waffler_server/mocks/internal_/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/mocks/internal_/infrastructure/service/telegram"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 	"testing"
 	"time"
 )
 
 type MockServer struct {
-	TgClient *telegram.ClientSource
+	MockComponents MockComponents
+	Components     Components
+}
+
+type MockComponents struct {
+	TgClient  *telegram.ClientSource
+	GPTClient *gpt.AiLanguageModel
+}
+
+type Components struct {
+	Db *gorm.DB
 }
 
 func NewMockServer(t *testing.T) (*chi.Mux, *MockServer) {
@@ -70,7 +83,7 @@ func NewMockServer(t *testing.T) (*chi.Mux, *MockServer) {
 }
 
 func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) (*chi.Mux, *MockServer) {
-	mS := &MockServer{}
+
 	conn, err := db.NewSqlDB(conf)
 	if err != nil {
 		logger.Fatal("app: db error", zap.Error(err))
@@ -102,11 +115,13 @@ func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) (*chi.Mu
 		return nil, nil
 	}
 
-	mS.TgClient = tg
-
 	dataSource := data_source.NewDataTelegram(tg)
 
 	storagesDB := storages.NewStorages(conn)
+
+	gptInstance := gpt.NewAiLanguageModel(t)
+
+	gptWrapper := language_model.NewChatGPTWrapper(gptInstance, logger)
 
 	// инициализация менеджера токенов
 	tokenManager := cryptography.NewTokenJWT(conf.Token)
@@ -127,13 +142,21 @@ func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) (*chi.Mu
 	token := midle.NewTokenManager(responseManager, tokenManager)
 
 	components := component.NewComponents(conf, tokenManager, token, responseManager, decoder,
-		hash, dataSource, logger)
+		hash, dataSource, logger, gptWrapper)
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
 
 	// init router
 	r := router.NewApiRouter(controller, components)
 
-	return r, mS
+	return r, &MockServer{
+		MockComponents: MockComponents{
+			TgClient:  tg,
+			GPTClient: gptInstance,
+		},
+		Components: Components{
+			Db: conn,
+		},
+	}
 
 }

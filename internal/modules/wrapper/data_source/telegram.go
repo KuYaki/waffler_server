@@ -123,8 +123,9 @@ func (w *DataSource) getMessageForId(channel *tg2.Channel, limit int, AddOffset 
 	mes, err := w.client.MessagesGetHistory(channel, limit, AddOffset)
 	if err != nil {
 		log.Fatalln("failed to get chat:", err)
+
 	}
-	res, ok := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
+	res, ok := mes.(*tg2.MessagesChannelMessages)
 	if !ok {
 		return nil, fmt.Errorf("unknown message type: %T", mes)
 	}
@@ -160,7 +161,10 @@ func (w *DataSource) parseChat(channel *tg2.Channel, limit int, AddOffset int, s
 }
 
 func messageToRecordDTO(mes tg2.MessagesMessagesClass, sessionTs time.Time, channel *tg2.Channel) ([]models.RecordDTO, error) {
-	res := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
+	res, ok := mes.(*tg2.MessagesChannelMessages)
+	if !ok {
+		return nil, fmt.Errorf("unknown message type: %T", mes)
+	}
 	records := make([]models.RecordDTO, 0, len(res.Messages))
 
 	for _, mesRaw := range res.Messages {

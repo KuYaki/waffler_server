@@ -6,6 +6,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/modules/wrapper/data_source"
+	"github.com/KuYaki/waffler_server/internal/modules/wrapper/language_model"
 	"github.com/ptflp/godecoder"
 	"go.uber.org/zap"
 )
@@ -19,9 +20,10 @@ type Components struct {
 	Logger       *zap.Logger
 	Hash         cryptography.Hasher
 	Tg           data_source.DataSourcer
+	Gpt          language_model.LanguageModel
 }
 
-func NewComponents(conf *config.AppConf, tokenManager cryptography.TokenManager, token *middleware.Token, responder responder.Responder, decoder godecoder.Decoder, hash cryptography.Hasher, dataSource data_source.DataSourcer, logger *zap.Logger) *Components {
+func NewComponents(conf *config.AppConf, tokenManager cryptography.TokenManager, token *middleware.Token, responder responder.Responder, decoder godecoder.Decoder, hash cryptography.Hasher, dataSource data_source.DataSourcer, logger *zap.Logger, gpt language_model.LanguageModel) *Components {
 	return &Components{Conf: conf,
 		TokenManager: tokenManager,
 		Token:        token,
@@ -29,5 +31,6 @@ func NewComponents(conf *config.AppConf, tokenManager cryptography.TokenManager,
 		Decoder:      decoder,
 		Hash:         hash,
 		Logger:       logger,
-		Tg:           dataSource}
+		Tg:           dataSource,
+		Gpt:          gpt}
 }
