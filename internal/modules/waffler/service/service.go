@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"fmt"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"net/url"
 	"sync"
 
@@ -367,7 +367,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 		return err
 	}
 
-	err = w.storage.CreateWafflerRecords(newWafflerRecords)
+	err = w.storage.CreateWafflerRecords(newWafflerRecords.records)
 	if err != nil {
 		w.log.Error("error: search", zap.Error(err))
 		return err
@@ -424,7 +424,7 @@ func (w *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	}
 
 	if search.Cursor.Partition == 1 {
-		resURL, err := s.storage.
+		resURL, err := w.storage.
 			SearchLikeBySourceURLNotName(search.QueryForName, search.SourceType, search.Cursor.Offset, orders, search.Limit)
 		if err != nil {
 			return nil, err
@@ -470,7 +470,7 @@ func (s *WafflerService) PriceSource(request *message.PriceRequest) (*message.Pr
 		price *= 100
 	}
 
-	if request.Parser.Type == "GPT" {
+	if message.ValidateParser(int(request.Parser.Type)) {
 		price /= 2
 	}
 

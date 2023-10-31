@@ -7,7 +7,6 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/handler"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
-	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"github.com/ptflp/godecoder"
@@ -44,34 +43,9 @@ func (a *User) Info(w http.ResponseWriter, r *http.Request) {
 	a.Responder.OutputJSON(w, userInfo)
 }
 
-var locale = []string{
-	"RU", "EN",
-}
-
-var parser = []models.ParserType{
-	models.GPT3_5TURBO,
-	models.GPT4,
-	models.YakiModel_GPT3_5TURBO,
-}
-
 func validate(user message.UserInfo) bool {
-	var successLocale bool
-	for _, l := range locale {
-		if user.Locale == l {
-			successLocale = true
-			break
-		}
-	}
 
-	var successParser bool
-	for _, p := range parser {
-		if user.Parser.Type == p {
-			successParser = true
-			break
-		}
-	}
-
-	return successLocale && successParser
+	return message.ValidateLocale(user.Locale) && message.ValidateParser(int(user.Parser.Type))
 
 }
 

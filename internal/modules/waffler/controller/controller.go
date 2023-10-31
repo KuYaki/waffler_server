@@ -149,7 +149,7 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 
 	// Read request data from connection
 	var Parser *message.ParserRequest
-	err := wa.Decoder.Decode(r.Body, &Parser)
+	err = wa.Decoder.Decode(r.Body, &Parser)
 	if err != nil {
 		wa.ErrorBadRequest(w, err)
 		return
