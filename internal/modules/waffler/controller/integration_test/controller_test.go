@@ -289,7 +289,7 @@ func TestWaffl_Parse(t *testing.T) {
 				log.Fatal(err)
 			}
 
-			req, err := http.NewRequest("POST", "/source/parse", &buf)
+			req, err := http.NewRequest("", "/source/parse", &buf)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -313,8 +313,8 @@ func TestWaffl_Parse(t *testing.T) {
 				Name:         ch.Username + " " + "@" + ch.Title,
 				SourceType:   models.Telegram,
 				SourceUrl:    "https://t.me/maximkatz",
-				WafflerScore: 0,
-				RacismScore:  0,
+				WafflerScore: models.NewNullFloat64(0),
+				RacismScore:  models.NewNullFloat64(0),
 			}
 
 			index++

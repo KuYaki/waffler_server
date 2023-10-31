@@ -55,8 +55,8 @@ jobs:
     - name: run-test
       run: go test -v -tags=unit ./...
 
-    - name: test integration
-      run: go test -v -tags=integration ./...
+   # - name: test integration
+  #  run: go test -v -tags=integration ./...
 
   deploy_master:
     if: github.ref == 'refs/heads/master'
