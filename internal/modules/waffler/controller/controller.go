@@ -4,6 +4,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
 	middleware "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
+	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	service2 "github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"github.com/KuYaki/waffler_server/internal/modules/waffler/service"
@@ -142,7 +143,7 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if Parser.Parser.Token == "" || Parser.Parser.Type == "" {
+	if Parser.Parser.Type != models.YakiModel_GPT3_5TURBO && Parser.Parser.Token == "" {
 		wa.Responder.ErrorBadRequest(w, err)
 		return
 	}

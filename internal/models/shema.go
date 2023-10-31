@@ -68,4 +68,6 @@ type ParserType int
 const (
 	GPT3_5TURBO ParserType = iota
 	GPT4
+	YakiModel_GPT3_5TURBO
+	NotFound
 )

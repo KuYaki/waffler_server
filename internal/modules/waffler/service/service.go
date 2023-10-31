@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"net/url"
 
 	"github.com/KuYaki/waffler_server/internal/infrastructure/component"
@@ -24,24 +25,15 @@ type WafflerService struct {
 	storage storage.WafflerStorager
 	log     *zap.Logger
 	tg      data_source.DataSourcer
+	gpt     language_model.LanguageModel
 }
 
 func NewWafflerService(storage storage.WafflerStorager, components *component.Components) *WafflerService {
-	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg}
+	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg, gpt: components.Gpt}
 }
 
-// Score processes a scoring request based on the given criteria, primarily the SourceID.
-// It fetches and returns the relevant records with their associated scores.
-//
-// Parameters:
-// - request: A pointer to the ScoreRequest object containing the necessary details for the scoring.
-//
-// Returns:
-// - A pointer to the ScoreResponse object containing the results of the scoring operation.
-// - An error if any occurs during the operation.
-func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
+func (w *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
 
-	// Initializing the scoreResponse object with cursor details and an empty records slice
 	scoreResponse := &message.ScoreResponse{
 		Cursor: &message.Cursor{
 			Offset: request.Cursor.Offset,
@@ -49,39 +41,32 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 		Records: []message.Record{},
 	}
 
-	// Convert the order provided in the request to the required type
 	orders, err := convertRecordOrder(request.Order)
 	if err != nil {
 		return nil, err
 	}
 
-	// Fetch all the records based on the SourceID provided in the request
-	records, err := u.storage.ListRecordsSourceID(request.SourceId)
+	records, err := w.storage.ListRecordsSourceID(request.SourceId)
 	if err != nil {
 		return nil, err
 	}
 
 	var racismRecords []models.RacismDTO
 
-	// Check the type provided in the request and fetch the corresponding records
 	switch request.Type {
 	case models.Racism:
-		racismRecords, err = u.storage.ListRacismRecordsSourceIDCursor(request.SourceId, orders, request.Cursor.Offset, request.Limit)
+		racismRecords, err = w.storage.ListRacismRecordsSourceIDCursor(request.SourceId, orders, request.Cursor.Offset, request.Limit)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// If there are no racismRecords, then set the cursor to nil
 	if len(racismRecords) == 0 {
 		scoreResponse.Cursor = nil
 	} else {
-		// Update the cursor's offset based on the number of records
 		scoreResponse.Cursor.Offset += len(records)
 
-		// Allocate space for the records to be appended to the response
 		scoreResponse.Records = make([]message.Record, 0, len(records))
-		// Iterate through the racismRecords and map them to the response's Records slice
 		for i := range racismRecords {
 			scoreResponse.Records = append(scoreResponse.Records, message.Record{
 				RecordText: records[i].RecordText,
@@ -94,7 +79,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 	return scoreResponse, nil
 }
 
-func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, error) {
+func (w *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, error) {
 	res := &message.InfoRequest{}
 
 	urlParse, err := url.Parse(urlSearch)
@@ -104,9 +89,9 @@ func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, err
 
 	switch urlParse.Host {
 	case "t.me":
-		channel, err := u.tg.ContactSearch(urlSearch)
+		channel, err := w.tg.ContactSearch(urlSearch)
 		if err != nil {
-			u.log.Error("error: search", zap.Error(err))
+			w.log.Error("error: search", zap.Error(err))
 			return nil, err
 		}
 
@@ -120,6 +105,17 @@ func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, err
 	return res, nil
 }
 
+func (w *WafflerService) createLanModel(search *message.ParserRequest) language_model.LanguageModel {
+	var lanModel language_model.LanguageModel
+	if search.Parser.Type == models.YakiModel_GPT3_5TURBO {
+		lanModel = w.gpt
+	} else {
+		gptInstance := gpt.NewAiLanguageModel(search.Parser.Token)
+		lanModel = language_model.NewChatGPTWrapper(gptInstance, w.log)
+	}
+	return lanModel
+}
+
 func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, dataTelegram *data_source.DataTelegram) error {
 	g := errgroup.Group{}
 	g.SetLimit(20)
@@ -131,7 +127,8 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 	}
 
 	newRacismRecords := make([]models.RacismDTO, 0, len(dataTelegram.Records))
-	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
+	lanModel := w.createLanModel(search)
+
 	for _, r := range dataTelegram.Records {
 		tempRecord := r
 		existRasism := false
@@ -210,6 +207,7 @@ func (w *WafflerService) ParseSource(search *message.ParserRequest) error {
 	var source *models.SourceDTO
 	var records []models.RecordDTO
 	var err error
+
 	source, err = w.storage.SearchBySourceUrl(search.SourceURL)
 	if err != nil {
 		w.log.Error("error: search", zap.Error(err))
@@ -305,7 +303,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 	g.SetLimit(20)
 
 	newWafflerRecords := make([]models.WafflerDTO, 0, len(dataTelegram.Records))
-	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
+	lanModel := w.createLanModel(search)
 	for _, r := range dataTelegram.Records {
 		tempRecord := r
 		for _, r2 := range dataTelegram.Records {
@@ -389,7 +387,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 
 //  ToDo: racizm rename to racism
 
-func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
+func (w *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
 	res := &message.SearchResponse{
 		Sources: make([]models.SourceDTO, 0, search.Limit),
 	}
@@ -400,7 +398,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	}
 
 	if search.Cursor.Partition == 0 {
-		res.Sources, err = s.storage.
+		res.Sources, err = w.storage.
 			SearchLikeBySourceName(search.QueryForName, search.SourceType, search.Cursor.Offset, orders, search.Limit)
 
 		if err != nil {
@@ -418,7 +416,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	}
 
 	if search.Cursor.Partition == 1 {
-		resURL, err := s.storage.
+		resURL, err := w.storage.
 			SearchLikeBySourceURLNotName(search.QueryForName, search.SourceType, search.Cursor.Offset, orders, search.Limit)
 		if err != nil {
 			return nil, err

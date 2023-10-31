@@ -7,6 +7,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/handler"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
+	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules/message"
 	"github.com/KuYaki/waffler_server/internal/modules/user/service"
 	"github.com/ptflp/godecoder"
@@ -47,8 +48,10 @@ var locale = []string{
 	"RU", "EN",
 }
 
-var parser = []string{
-	"GPT",
+var parser = []models.ParserType{
+	models.GPT3_5TURBO,
+	models.GPT4,
+	models.YakiModel_GPT3_5TURBO,
 }
 
 func validate(user message.UserInfo) bool {
