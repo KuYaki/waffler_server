@@ -15,7 +15,7 @@ import (
 )
 
 type Auth struct {
-	conf config.AppConf
+	conf *config.AppConf
 	user uservice.Userer
 
 	tokenManager cryptography.TokenManager

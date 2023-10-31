@@ -18,7 +18,7 @@ const (
 	Fatal  = "fatal"
 )
 
-func NewLogger(conf config.AppConf) (*zap.Logger, error) {
+func NewLogger(conf *config.AppConf) (*zap.Logger, error) {
 	levels := map[string]zapcore.Level{
 		Debug:  zapcore.DebugLevel,
 		Info:   zapcore.InfoLevel,

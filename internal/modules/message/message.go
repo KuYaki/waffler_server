@@ -14,8 +14,8 @@ type UserInfo struct {
 type Locale string
 
 type Parser struct {
-	Type  string `json:"type,omitempty"`
-	Token string `json:"token,omitempty"`
+	Type  models.ParserType `json:"type,omitempty"`
+	Token string            `json:"token,omitempty"`
 }
 
 type InfoRequest struct {

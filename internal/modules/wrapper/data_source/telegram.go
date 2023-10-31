@@ -58,90 +58,6 @@ func (w *DataSource) parseChatTelegram(channel *tg2.Channel, limit int, sessionT
 	return records, nil
 }
 
-//func (w *DataSource) ParseChatTelegram(query string, limit int, idMessages []int) (*DataTelegram, error) {
-//	var records = make([]models.RecordDTO, 0, limit)
-//	var sessionTs = time.Now()
-//	channel, err := w.ContactSearch(query)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if len(idMessages) == 0 {
-//		newRecords, err := w.parseChatTelegram(channel, limit, sessionTs)
-//		if err != nil {
-//			return nil, err
-//		}
-//		records = append(records, newRecords...)
-//
-//	} else {
-//		idMessagesTelegram, err := w.getMessageForId(channel, 1, 0)
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		countNewMessages := idMessagesTelegram[0] - idMessages[0]
-//
-//		if countNewMessages > 0 {
-//			if limit < countNewMessages {
-//				countNewMessages = limit
-//			}
-//
-//			newRecords, err := w.parseChatTelegram(channel, countNewMessages, sessionTs)
-//			if err != nil {
-//				return nil, err
-//			}
-//			records = append(records, newRecords...)
-//
-//		}
-//
-//		if len(records) < limit {
-//			for _, r := range records {
-//				idMessages = append(idMessages, r.ID)
-//			}
-//			sort.Ints(idMessages)
-//
-//			idMessagesForRequest := make([]int, 0, 50)
-//			currentID := idMessages[0]
-//			for i := 0; i < len(idMessages) || len(records)+len(idMessagesForRequest) < limit; i++ {
-//				if idMessages[i] != currentID {
-//					idMessagesForRequest = append(idMessagesForRequest, currentID)
-//				}
-//				currentID--
-//			}
-//
-//			mes, err := w.getMessagesForID(channel, idMessagesForRequest, sessionTs)
-//			if err != nil {
-//				return nil, err
-//			}
-//			records = append(records, mes...)
-//		}
-//
-//		if idMessages[0]-(idMessages[0]-len(idMessages)) < limit {
-//			idMessagesForRequest := make([]int, 0, 50)
-//			for i := records[len(records)-1].ID; limit-len(records) < len(idMessagesForRequest); i++ {
-//				idMessagesForRequest = append(idMessagesForRequest, i)
-//			}
-//
-//			mes, err := w.getMessagesForID(channel, idMessagesForRequest, sessionTs)
-//			if err != nil {
-//				return nil, err
-//			}
-//			records = append(records, mes...)
-//		}
-//
-//	}
-//
-//	return &DataTelegram{
-//		Source: &models.SourceDTO{
-//			Name:       channel.Username + " " + "@" + channel.Title,
-//			SourceType: models.Telegram,
-//			SourceUrl:  query,
-//		},
-//		Records: records,
-//	}, nil
-//
-//}
-
 func (w *DataSource) ParseChatTelegram(query string, limit int, recordDTOS []models.RecordDTO) (*DataTelegram, error) {
 	var newRecords []models.RecordDTO
 	var records = make([]models.RecordDTO, 0, limit)
@@ -207,8 +123,9 @@ func (w *DataSource) getMessageForId(channel *tg2.Channel, limit int, AddOffset 
 	mes, err := w.client.MessagesGetHistory(channel, limit, AddOffset)
 	if err != nil {
 		log.Fatalln("failed to get chat:", err)
+
 	}
-	res, ok := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
+	res, ok := mes.(*tg2.MessagesChannelMessages)
 	if !ok {
 		return nil, fmt.Errorf("unknown message type: %T", mes)
 	}
@@ -244,7 +161,10 @@ func (w *DataSource) parseChat(channel *tg2.Channel, limit int, AddOffset int, s
 }
 
 func messageToRecordDTO(mes tg2.MessagesMessagesClass, sessionTs time.Time, channel *tg2.Channel) ([]models.RecordDTO, error) {
-	res := mes.(*tg2.MessagesChannelMessages) //  ToDo: switch type
+	res, ok := mes.(*tg2.MessagesChannelMessages)
+	if !ok {
+		return nil, fmt.Errorf("unknown message type: %T", mes)
+	}
 	records := make([]models.RecordDTO, 0, len(res.Messages))
 
 	for _, mesRaw := range res.Messages {

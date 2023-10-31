@@ -13,7 +13,7 @@ type AiLanguageModel interface {
 	QuestionForGPT(answer string) (*openai.ChatCompletionResponse, error)
 }
 
-func NewChatGPT(token string) AiLanguageModel {
+func NewAiLanguageModel(token string) AiLanguageModel {
 	client := openai.NewClient(token)
 	return &ChatGPT{
 		gpt: client,
