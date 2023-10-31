@@ -9,11 +9,13 @@ import (
 	midle "github.com/KuYaki/waffler_server/internal/infrastructure/midlleware"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/responder"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/server"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules"
 	"github.com/KuYaki/waffler_server/internal/modules/wrapper/data_source"
+	"github.com/KuYaki/waffler_server/internal/modules/wrapper/language_model"
 	"github.com/KuYaki/waffler_server/internal/router"
 	"github.com/KuYaki/waffler_server/internal/storages"
 	jsoniter "github.com/json-iterator/go"
@@ -47,14 +49,14 @@ type Bootstraper interface {
 
 // App - application structure
 type App struct {
-	conf   config.AppConf
+	conf   *config.AppConf
 	logger *zap.Logger
 	srv    server.Server
 	Sig    chan os.Signal
 }
 
 // NewApp - application builder
-func NewApp(conf config.AppConf, logger *zap.Logger) *App {
+func NewApp(conf *config.AppConf, logger *zap.Logger) *App {
 	return &App{conf: conf, logger: logger, Sig: make(chan os.Signal, 1)}
 }
 
@@ -125,6 +127,10 @@ func (a *App) Bootstrap() Runner {
 	}
 	dataSource := data_source.NewDataTelegram(tg)
 
+	gptInstance := gpt.NewAiLanguageModel(a.conf.ChatGPT.Token)
+
+	gptWrapper := language_model.NewChatGPTWrapper(gptInstance, a.logger)
+
 	storagesDB := storages.NewStorages(conn)
 
 	// инициализация менеджера токенов
@@ -146,7 +152,7 @@ func (a *App) Bootstrap() Runner {
 	token := midle.NewTokenManager(responseManager, tokenManager)
 
 	components := component.NewComponents(a.conf, tokenManager, token, responseManager, decoder,
-		hash, dataSource, a.logger)
+		hash, dataSource, a.logger, gptWrapper)
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
 	// init router

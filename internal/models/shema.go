@@ -60,6 +60,7 @@ type SourceType int
 const (
 	Telegram SourceType = iota
 	Youtube
+	Unknown
 )
 
 type ParserType int
@@ -67,4 +68,6 @@ type ParserType int
 const (
 	GPT3_5TURBO ParserType = iota
 	GPT4
+	YakiModel_GPT3_5TURBO
+	NotFound
 )

@@ -43,32 +43,9 @@ func (a *User) Info(w http.ResponseWriter, r *http.Request) {
 	a.Responder.OutputJSON(w, userInfo)
 }
 
-var locale = []string{
-	"RU", "EN",
-}
-
-var parser = []string{
-	"GPT",
-}
-
 func validate(user message.UserInfo) bool {
-	var successLocale bool
-	for _, l := range locale {
-		if user.Locale == l {
-			successLocale = true
-			break
-		}
-	}
 
-	var successParser bool
-	for _, p := range parser {
-		if user.Parser.Type == p {
-			successParser = true
-			break
-		}
-	}
-
-	return successLocale && successParser
+	return message.ValidateLocale(user.Locale) && message.ValidateParser(int(user.Parser.Type))
 
 }
 

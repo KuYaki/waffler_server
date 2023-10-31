@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"net/url"
 	"sync"
 
@@ -27,41 +28,44 @@ type WafflerService struct {
 	storage storage.WafflerStorager
 	log     *zap.Logger
 	tg      data_source.DataSourcer
+	gpt     language_model.LanguageModel
 }
 
 func NewWafflerService(storage storage.WafflerStorager, components *component.Components) *WafflerService {
-	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg}
+	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg, gpt: components.Gpt}
 }
 
-func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
+func (w *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {
+
 	scoreResponse := &message.ScoreResponse{
 		Cursor: &message.Cursor{
 			Offset: request.Cursor.Offset,
 		},
 		Records: []message.Record{},
 	}
+
 	orders, err := convertRecordOrder(request.Order)
 	if err != nil {
 		return nil, err
 	}
 
-	records, err := u.storage.ListRecordsSourceID(request.SourceId)
+	records, err := w.storage.ListRecordsSourceID(request.SourceId)
 	if err != nil {
 		return nil, err
 	}
+
 	var racismRecords []models.RacismDTO
+
 	switch request.Type {
 	case models.Racism:
-		racismRecords, err = u.storage.ListRacismRecordsSourceIDCursor(request.SourceId, orders, request.Cursor.Offset, request.Limit)
+		racismRecords, err = w.storage.ListRacismRecordsSourceIDCursor(request.SourceId, orders, request.Cursor.Offset, request.Limit)
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
 	if len(racismRecords) == 0 {
 		scoreResponse.Cursor = nil
-
 	} else {
 		scoreResponse.Cursor.Offset += len(records)
 
@@ -78,7 +82,7 @@ func (u *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreRes
 	return scoreResponse, nil
 }
 
-func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, error) {
+func (w *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, error) {
 	res := &message.InfoRequest{}
 
 	urlParse, err := url.Parse(urlSearch)
@@ -88,14 +92,17 @@ func (u *WafflerService) InfoSource(urlSearch string) (*message.InfoRequest, err
 
 	switch urlParse.Host {
 	case "t.me":
-		channel, err := u.tg.ContactSearch(urlSearch)
+		channel, err := w.tg.ContactSearch(urlSearch)
 		if err != nil {
-			u.log.Error("error: search", zap.Error(err))
+			w.log.Error("error: search", zap.Error(err))
 			return nil, err
 		}
 
 		res.Name = channel.Title
 		res.Type = models.Telegram
+	default:
+		res.Name = "Unknown"
+		res.Type = models.Unknown
 	}
 
 	return res, nil
@@ -112,7 +119,7 @@ func (w *WafflerService) parseSourceTypeRacism(search *message.ParserRequest, da
 	}
 
 	newRacismRecords := make([]models.RacismDTO, len(dataTelegram.Records))
-	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
+	lanModel := w.createLanModel(search)
 	for i, r := range dataTelegram.Records {
 		i, r := i, r
 		existRasism := false
@@ -297,7 +304,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 	g.SetLimit(20)
 
 	newWafflerRecords := wafflerRecords{}
-	lanModel := language_model.NewChatGPTWrapper(search.Parser.Token, w.log)
+	lanModel := w.createLanModel(search)
 	for _, r := range dataTelegram.Records {
 		r := r
 		for _, r2 := range dataTelegram.Records {
@@ -340,7 +347,6 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 						CreatedTsAfter:  r2.CreatedTs,
 						SourceID:        dataTelegram.Source.ID,
 					})
-					updateChan <- true
 					return nil
 				} else {
 					if err != nil {
@@ -389,7 +395,7 @@ func (w *WafflerService) parseSourceTypeWaffler(search *message.ParserRequest, d
 
 //  ToDo: racizm rename to racism
 
-func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
+func (w *WafflerService) Search(search *message.Search) (*message.SearchResponse, error) {
 	res := &message.SearchResponse{
 		Sources: make([]models.SourceDTO, 0, search.Limit),
 	}
@@ -400,7 +406,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	}
 
 	if search.Cursor.Partition == 0 {
-		res.Sources, err = s.storage.
+		res.Sources, err = w.storage.
 			SearchLikeBySourceName(search.QueryForName, search.SourceType, search.Cursor.Offset, orders, search.Limit)
 
 		if err != nil {
@@ -418,7 +424,7 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	}
 
 	if search.Cursor.Partition == 1 {
-		resURL, err := s.storage.
+		resURL, err := w.storage.
 			SearchLikeBySourceURLNotName(search.QueryForName, search.SourceType, search.Cursor.Offset, orders, search.Limit)
 		if err != nil {
 			return nil, err
@@ -438,6 +444,17 @@ func (s *WafflerService) Search(search *message.Search) (*message.SearchResponse
 	return res, nil
 }
 
+func (w *WafflerService) createLanModel(search *message.ParserRequest) language_model.LanguageModel {
+	var lanModel language_model.LanguageModel
+	if search.Parser.Type == models.YakiModel_GPT3_5TURBO {
+		lanModel = w.gpt
+	} else {
+		gptInstance := gpt.NewAiLanguageModel(search.Parser.Token)
+		lanModel = language_model.NewChatGPTWrapper(gptInstance, w.log)
+	}
+	return lanModel
+}
+
 func (s *WafflerService) PriceSource(request *message.PriceRequest) (*message.PriceResponse, error) {
 	response := message.PriceResponse{Currency: request.Currency}
 	var price float64
@@ -453,7 +470,7 @@ func (s *WafflerService) PriceSource(request *message.PriceRequest) (*message.Pr
 		price *= 100
 	}
 
-	if request.Parser.Type == "GPT" {
+	if message.ValidateParser(int(request.Parser.Type)) {
 		price /= 2
 	}
 

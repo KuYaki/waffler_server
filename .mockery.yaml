@@ -1,0 +1,21 @@
+# mockery
+
+with-expecter: true
+inpackage: true
+dir: mocks/{{ replaceAll .InterfaceDirRelative "internal" "internal_" }}
+mockname: "{{.InterfaceName}}"
+outpkg: "{{.PackageName}}"
+filename: "{{.InterfaceName}}.go"
+all: true
+
+packages:
+  github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram:
+    config:
+      with-expecter: true
+    interfaces:
+      ClientSource:
+  github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt:
+    config:
+      with-expecter: true
+    interfaces:
+      AiLanguageModel:

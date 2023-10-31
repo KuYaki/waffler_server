@@ -37,6 +37,10 @@ type Waffl struct {
 	godecoder.Decoder
 }
 
+func (w *Waffl) GetField() service.WafflerServicer {
+	return w.service
+}
+
 func NewWaffl(service service.WafflerServicer, user service2.Userer, components *component.Components) Waffler {
 	return &Waffl{service: service,
 		log: components.Logger, token: components.Token, userService: user, Responder: components.Responder, Decoder: components.Decoder}
@@ -145,13 +149,13 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 
 	// Read request data from connection
 	var Parser *message.ParserRequest
-	err = conn.ReadJSON(&Parser)
+	err = wa.Decoder.Decode(r.Body, &Parser)
 	if err != nil {
 		wa.ErrorBadRequest(w, err)
 		return
 	}
 
-	if Parser.Parser == nil || Parser.Parser.Token == "" || Parser.Parser.Type == "" {
+	if Parser.Parser.Type != models.YakiModel_GPT3_5TURBO && Parser.Parser.Token == "" {
 		wa.Responder.ErrorBadRequest(w, err)
 		return
 	}
@@ -185,6 +189,8 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	wa.OutputJSON(w, nil)
 }
 func (wa *Waffl) Hello(w http.ResponseWriter, r *http.Request) {
 	wa.Responder.OutputJSON(w, "Hello, world!")

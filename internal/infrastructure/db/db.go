@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewSqlDB(dbConf config.AppConf) (*gorm.DB, error) {
+func NewSqlDB(dbConf *config.AppConf) (*gorm.DB, error) {
 	dsnRaw := "user=%s password=%s host=%s port=%s dbname=%s sslmode=disable"
 
 	dsn := fmt.Sprintf(dsnRaw,

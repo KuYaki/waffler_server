@@ -54,8 +54,8 @@ type Server struct {
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 }
 
-func NewAppConf() AppConf {
-	return AppConf{
+func NewAppConf() *AppConf {
+	return &AppConf{
 		AppName: os.Getenv("APP_NAME"),
 		TestApp: getBool("TEST_APP"),
 		Logger: &Logger{

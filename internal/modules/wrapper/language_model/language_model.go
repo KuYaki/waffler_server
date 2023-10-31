@@ -13,17 +13,17 @@ import (
 )
 
 const (
-	answerGPTRacism  = `Оцени по шкале от 0 до 100 на сколько рассисткий следующий  текст. 0 - это не рассисткие, 100 точное расисткие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений:`
-	answerGPTWaffler = `Оцени по шкале от 0 до 100 на сколько логически противоречат друг другу следующие два блока текста. 0 - это не противоречат, 100 точное логическое противоречие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений:`
+	AnswerGPTRacism  = `Оцени по шкале от 0 до 100 на сколько рассисткий следующий  текст. 0 - это не рассисткие, 100 точное расисткие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений:`
+	AnswerGPTWaffler = `Оцени по шкале от 0 до 100 на сколько логически противоречат друг другу следующие два блока текста. 0 - это не противоречат, 100 точное логическое противоречие. Если не уверен или не можешь оценить, просто пиши -1 и не надо никак пояснений:`
 )
 
 type LanguageModel interface {
 	ConstructQuestionGPT(mess string, scoreType models.ScoreType) (*int, error)
 }
 
-func NewChatGPTWrapper(token string, log *zap.Logger) LanguageModel {
+func NewChatGPTWrapper(langModel gpt.AiLanguageModel, log *zap.Logger) LanguageModel {
 	return &ChatGPT{
-		gpt: gpt.NewChatGPT(token),
+		gpt: langModel,
 		log: log,
 	}
 }
@@ -40,13 +40,13 @@ func (w *ChatGPT) ConstructQuestionGPT(mess string, scoreType models.ScoreType) 
 	switch scoreType {
 
 	case models.Racism:
-		answerGPT, errWarn = w.gpt.QuestionForGPT(answerGPTRacism + " " + mess)
+		answerGPT, errWarn = w.gpt.QuestionForGPT(AnswerGPTRacism + " " + mess)
 		if errWarn != nil {
 			w.log.Warn("error: QuestionForGPT", zap.Error(errWarn))
 			return nil, nil
 		}
 	case models.Waffler:
-		answerGPT, errWarn = w.gpt.QuestionForGPT(answerGPTWaffler + " " + mess)
+		answerGPT, errWarn = w.gpt.QuestionForGPT(AnswerGPTWaffler + " " + mess)
 		if errWarn != nil {
 			w.log.Warn("error: QuestionForGPT", zap.Error(errWarn))
 			return nil, nil

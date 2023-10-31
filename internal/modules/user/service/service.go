@@ -33,7 +33,7 @@ func (u *UserService) GetUserInfo(ctx context.Context, id int) (*message.UserInf
 	//  maintain compatibility  ToDo: change it
 	userInfo := &message.UserInfo{
 		Parser: message.Parser{
-			Type:  "not found",
+			Type:  models.NotFound,
 			Token: "not found",
 		},
 		Locale: "not found",
