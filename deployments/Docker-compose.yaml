@@ -2,7 +2,7 @@ version: '3.9'
 services:
   rest_api:
     container_name: ${APP_NAME}api
-    image: yaric011/waffler_server:latest
+    image: yaric011/waffler_server_test:latest
     restart: always
     volumes:
       - ../.env:/root/.env
