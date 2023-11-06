@@ -14,7 +14,7 @@ func ValidatePriceRequest(priceRequest message.PriceRequest) error {
 	if priceRequest.ScoreType != models.Waffler && priceRequest.ScoreType != models.Racism {
 		return errors.New("Invalid score type")
 	}
-	if message.ValidateParser(int(priceRequest.Parser.Type)) {
+	if !message.ValidateParser(int(priceRequest.Parser.Type)) {
 		return errors.New("Invalid parser type")
 	}
 
