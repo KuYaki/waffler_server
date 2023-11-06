@@ -200,7 +200,7 @@ func (w *DataSource) ContactSearch(query string) (*tg2.Channel, error) {
 	chats := f.GetChats()
 	for _, chat := range chats {
 		channel = chat.(*tg2.Channel)
-		if channel.Broadcast && channel.Username == usernameTarget {
+		if channel.Username == usernameTarget {
 			found = true
 		}
 		if found {
@@ -212,7 +212,7 @@ func (w *DataSource) ContactSearch(query string) (*tg2.Channel, error) {
 	if !found {
 		for _, chat := range chats {
 			channel = chat.(*tg2.Channel)
-			if channel.Broadcast && strings.Contains(channel.Username, usernameTarget) {
+			if strings.Contains(channel.Username, usernameTarget) {
 				found = true
 			}
 			if found {
