@@ -48,6 +48,15 @@ type RacismDTO struct {
 	SourceID   int        `json:"source_id"`
 }
 
+type WebhookDTO struct {
+	ID              int       `json:"id,omitempty" gorm:"primaryKey"`
+	Name            string    `json:"name"`
+	LastIdMessage   int       `json:"last_id_message"`
+	LastTimeRequest time.Time `json:"last_request"`
+	UpdateId        int       `json:"update_id"`
+	Active          *bool     `json:"active"`
+}
+
 type ScoreType int
 
 const (

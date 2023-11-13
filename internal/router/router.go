@@ -10,12 +10,18 @@ import (
 
 func NewApiRouter(controllers *modules.Controllers, components *component.Components) *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(cors.AllowAll().Handler)
+
+	r.Use(cors.AllowAll().Handler) //  ToDO: delete all cors?
 	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer) //  ToDO: Need?
+	r.Use(middleware.Recoverer)
 
 	r.Get("/", controllers.Waffler.Hello)
 	authCheck := components.Token
+
+	r.Route("/bot_translator", func(r chi.Router) {
+		r.Post("/set_webhook", controllers.Bot.SetWebhook)
+		r.Post("/delete_webhook", controllers.Bot.DeleteWebhook)
+	})
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", controllers.Auth.Register)
@@ -37,7 +43,6 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 		sourceController := controllers.Waffler
 		r.Post("/search", sourceController.Search)
 		r.HandleFunc("/parse", sourceController.Parse)
-		r.HandleFunc("/ws", sourceController.WsTest)
 		r.Post("/score", sourceController.Score)
 		r.Post("/info", sourceController.Info)
 		r.Post("/price", sourceController.Price)

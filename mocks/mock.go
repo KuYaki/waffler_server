@@ -15,6 +15,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/storages"
 	"github.com/KuYaki/waffler_server/mocks/internal_/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/mocks/internal_/infrastructure/service/telegram"
+	webhook2 "github.com/KuYaki/waffler_server/mocks/internal_/infrastructure/service/webhook"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/ptflp/godecoder"
@@ -30,8 +31,9 @@ type MockServer struct {
 }
 
 type MockComponents struct {
-	TgClient  *telegram.ClientSource
-	GPTClient *gpt.AiLanguageModel
+	TgClient      *telegram.ClientSource
+	GPTClient     *gpt.AiLanguageModel
+	SenderWebhook *webhook2.SenderWebhooker
 }
 
 type Components struct {
@@ -95,6 +97,7 @@ func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) (*chi.Mu
 		&models.RecordDTO{},
 		&models.RacismDTO{},
 		&models.WafflerDTO{},
+		&models.WebhookDTO{},
 	)
 
 	if conf.TestApp {
@@ -141,8 +144,11 @@ func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) (*chi.Mu
 
 	token := midle.NewTokenManager(responseManager, tokenManager)
 
+	senderWebhook := webhook2.NewSenderWebhooker(t)
+
 	components := component.NewComponents(conf, tokenManager, token, responseManager, decoder,
-		hash, dataSource, logger, gptWrapper)
+		hash, dataSource, logger, gptWrapper, tg, senderWebhook)
+
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
 
@@ -151,8 +157,9 @@ func newMockApp(conf *config.AppConf, logger *zap.Logger, t *testing.T) (*chi.Mu
 
 	return r, &MockServer{
 		MockComponents: MockComponents{
-			TgClient:  tg,
-			GPTClient: gptInstance,
+			TgClient:      tg,
+			GPTClient:     gptInstance,
+			SenderWebhook: senderWebhook,
 		},
 		Components: Components{
 			Db: conn,

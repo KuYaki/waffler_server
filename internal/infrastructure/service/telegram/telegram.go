@@ -21,7 +21,8 @@ type ClientSource interface {
 	ContactSearch(query string) (*tg2.ContactsFound, error)
 	MessagesGetHistory(channel *tg2.Channel, limit int, AddOffset int) (tg2.MessagesMessagesClass, error)
 	GetMessagesForID(channel *tg2.Channel, iDs []int) (tg2.MessagesMessagesClass, error)
-	MessagesGetHistoryTime(channel *tg2.Channel, limit, time int) (tg2.MessagesMessagesClass, error)
+	MessagesGetHistoryTimeChannelMessage(channel *tg2.Channel, limit, time int) (tg2.MessagesMessagesClass, error)
+	MessagesGetHistoryTime(channel *tg2.Channel, limit, AddOffset, time int) (tg2.MessagesMessagesClass, error)
 }
 
 func NewTelegram(conf *config.Telegram) (ClientSource, error) {
@@ -78,21 +79,42 @@ func (t *Telegram) ContactSearch(query string) (*tg2.ContactsFound, error) {
 
 func (t *Telegram) MessagesGetHistory(channel *tg2.Channel, limit int, AddOffset int) (tg2.MessagesMessagesClass, error) {
 	return t.Client.MessagesGetHistory(context.Background(), &tg2.MessagesGetHistoryRequest{
-		Peer: &tg2.InputPeerChannel{
-			ChannelID:  channel.ID,
-			AccessHash: channel.AccessHash},
+		Peer: &tg2.InputPeerChannelFromMessage{
+			Peer: &tg2.InputPeerChannel{
+				ChannelID:  channel.ID,
+				AccessHash: channel.AccessHash,
+			},
+			ChannelID: channel.ID,
+		},
 		Limit:     limit,
 		AddOffset: AddOffset,
 	})
 
 }
 
-func (t *Telegram) MessagesGetHistoryTime(channel *tg2.Channel, limit, time int) (tg2.MessagesMessagesClass, error) {
+func (t *Telegram) MessagesGetHistoryTimeChannelMessage(channel *tg2.Channel, limit, time int) (tg2.MessagesMessagesClass, error) {
+	return t.Client.MessagesGetHistory(context.Background(), &tg2.MessagesGetHistoryRequest{
+		Peer: &tg2.InputPeerChannelFromMessage{
+			Peer: &tg2.InputPeerChannel{
+				ChannelID:  channel.ID,
+				AccessHash: channel.AccessHash,
+			},
+			ChannelID: channel.ID,
+		},
+		Limit:      limit,
+		OffsetDate: time,
+	})
+
+}
+
+func (t *Telegram) MessagesGetHistoryTime(channel *tg2.Channel, limit, AddOffset, time int) (tg2.MessagesMessagesClass, error) {
 	return t.Client.MessagesGetHistory(context.Background(), &tg2.MessagesGetHistoryRequest{
 		Peer: &tg2.InputPeerChannel{
 			ChannelID:  channel.ID,
-			AccessHash: channel.AccessHash},
+			AccessHash: channel.AccessHash,
+		},
 		Limit:      limit,
+		AddOffset:  AddOffset,
 		OffsetDate: time,
 	})
 
