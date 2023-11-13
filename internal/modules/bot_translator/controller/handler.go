@@ -32,8 +32,14 @@ func (wa *Translator) SetWebhook(w http.ResponseWriter, r *http.Request) {
 		wa.ErrorBadRequest(w, err)
 		return
 	}
+	var host = r.Host
+	if r.Proto == "HTTP/1.1" {
+		host = "http://" + host
+	} else {
+		host = "https://" + host
+	}
 
-	err = wa.serviceTr.SetWebhook(data, r.Host)
+	err = wa.serviceTr.SetWebhook(data, host)
 	if err != nil {
 		wa.ErrorInternal(w, err)
 		return

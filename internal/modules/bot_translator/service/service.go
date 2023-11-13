@@ -68,16 +68,11 @@ func (s *Service) SetWebhook(setWebhookParams bot_translator.SetWebhookParams, h
 		return fmt.Errorf("unknown message type: %T", mes)
 	}
 
-	v, ok := res.Messages[0].(*tg.Message)
-	if !ok {
-		return fmt.Errorf("unknown message type: %T", res.Messages[0])
-	}
-
 	if !exist {
 		err := s.botStorage.CreateWebhook(&models.WebhookDTO{
 			Name:            host + setWebhookParams.URL,
 			LastTimeRequest: timeInit,
-			LastIdMessage:   v.ID,
+			LastIdMessage:   res.Messages[0].GetID(),
 			UpdateId:        1,
 		})
 		if err != nil {
@@ -92,7 +87,7 @@ func (s *Service) SetWebhook(setWebhookParams bot_translator.SetWebhookParams, h
 
 	if setWebhookParams.DropPendingUpdates {
 		webhookDTO.LastTimeRequest = timeInit
-		webhookDTO.LastIdMessage = v.ID
+		webhookDTO.LastIdMessage = res.Messages[0].GetID()
 	}
 
 	worker := s.createWorker(setWebhookParams.URL, host, ch, webhookDTO.LastTimeRequest,
@@ -154,24 +149,24 @@ func (w *worker) run() {
 		select {
 		case <-ticker.C:
 			res := w.getNewMessages()
-			for _, mesRaw := range res {
+			for i := len(res) - 1; i >= 0; i-- {
 				//time.Sleep(time.Second * 1)
 
 				upd := bot_translator.Update{
 					ID:          w.updateId,
-					ChannelPost: mesRaw,
+					ChannelPost: res[i],
 				}
 				err := w.sender.SendUpdate(upd, w.host)
 				if err != nil {
-					break
+					w.log.Error("error: send update", zap.Error(err))
 				}
 				w.updateId++
 			}
-			w.time.Add(timeRequestInterval)
+			w.time = time.Now()
 			if err != nil {
 				break
 			}
-			if res != nil {
+			if res != nil && len(res) > 0 {
 				w.lastIdMessage = res[len(res)-1].ID
 			}
 
@@ -200,8 +195,7 @@ func (w *worker) run() {
 }
 
 func (w *worker) getNewMessages() []*tg.Message {
-	fmt.Println(w.time.Unix())
-	mes, err := w.tgClient.MessagesGetHistoryTime(w.scanChan, 10, 0, int(w.time.Unix()))
+	mes, err := w.tgClient.MessagesGetHistoryTime(w.scanChan, 10, 0, int(time.Now().Unix()))
 	if err != nil {
 		w.log.Error("error: get messages", zap.Error(err))
 	}
@@ -209,10 +203,10 @@ func (w *worker) getNewMessages() []*tg.Message {
 	mess, err := w.getNewMessagesHelper(mes)
 	lastIDMess := w.lastIdMessage
 	if mess != nil {
-		lastIDMess = mess[len(mess)-1].ID
+		lastIDMess = mess[0].ID
 	}
 
-	for lastIDMess < w.lastIdMessage {
+	for lastIDMess > w.lastIdMessage+10 {
 		mes, err := w.tgClient.MessagesGetHistoryTime(w.scanChan, 100, 0, mess[len(mess)-1].GetDate())
 		if err != nil {
 			w.log.Error("error: get messages", zap.Error(err))
@@ -224,9 +218,12 @@ func (w *worker) getNewMessages() []*tg.Message {
 		}
 
 		mess = append(mess, messPart...)
+		if messPart != nil {
+			lastIDMess = messPart[0].ID
+		}
 	}
 
-	return mess
+	return removeDuplicates(mess)
 }
 
 func (w *worker) getNewMessagesHelper(mes tg.MessagesMessagesClass) ([]*tg.Message, error) {
@@ -239,7 +236,7 @@ func (w *worker) getNewMessagesHelper(mes tg.MessagesMessagesClass) ([]*tg.Messa
 		//time.Sleep(time.Second * 1)
 		v, ok := mesRaw.(*tg.Message)
 		if !ok {
-			return nil, fmt.Errorf("unknown message type: %T", mesRaw)
+			continue
 		}
 		if v.ID > w.lastIdMessage {
 			result = append(result, v)
@@ -248,6 +245,20 @@ func (w *worker) getNewMessagesHelper(mes tg.MessagesMessagesClass) ([]*tg.Messa
 	}
 	return result, nil
 
+}
+
+func removeDuplicates(mes []*tg.Message) []*tg.Message {
+	seen := make(map[int]bool)
+	uniqueItems := make([]*tg.Message, 0, len(mes))
+
+	for _, item := range mes {
+		if _, ok := seen[item.ID]; !ok {
+			seen[item.ID] = true
+			uniqueItems = append(uniqueItems, item)
+		}
+	}
+
+	return uniqueItems
 }
 
 func (w *worker) stop() {
