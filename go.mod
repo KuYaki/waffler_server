@@ -37,6 +37,7 @@ require (
 	github.com/go-faster/jx v1.1.0 // indirect
 	github.com/go-faster/xor v1.0.0 // indirect
 	github.com/go-playground/validator/v10 v10.15.1 // indirect
+	github.com/go-telegram/bot v0.8.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gotd/ige v0.2.2 // indirect
 	github.com/gotd/neo v0.1.5 // indirect

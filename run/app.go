@@ -11,6 +11,7 @@ import (
 	"github.com/KuYaki/waffler_server/internal/infrastructure/server"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/gpt"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/service/telegram"
+	"github.com/KuYaki/waffler_server/internal/infrastructure/service/webhook"
 	"github.com/KuYaki/waffler_server/internal/infrastructure/tools/cryptography"
 	"github.com/KuYaki/waffler_server/internal/models"
 	"github.com/KuYaki/waffler_server/internal/modules"
@@ -106,6 +107,7 @@ func (a *App) Bootstrap() Runner {
 		&models.RecordDTO{},
 		&models.RacismDTO{},
 		&models.WafflerDTO{},
+		&models.WebhookDTO{},
 	)
 
 	if a.conf.TestApp {
@@ -151,8 +153,10 @@ func (a *App) Bootstrap() Runner {
 
 	token := midle.NewTokenManager(responseManager, tokenManager)
 
+	senderWebhook := webhook.NewWebhookSender()
+
 	components := component.NewComponents(a.conf, tokenManager, token, responseManager, decoder,
-		hash, dataSource, a.logger, gptWrapper)
+		hash, dataSource, a.logger, gptWrapper, tg, senderWebhook)
 	services := modules.NewServices(storagesDB, components)
 	controller := modules.NewControllers(services, components)
 	// init router

@@ -32,7 +32,7 @@ type WafflerService struct {
 }
 
 func NewWafflerService(storage storage.WafflerStorager, components *component.Components) *WafflerService {
-	return &WafflerService{storage: storage, log: components.Logger, tg: components.Tg, gpt: components.Gpt}
+	return &WafflerService{storage: storage, log: components.Logger, tg: components.TgWrapper, gpt: components.Gpt}
 }
 
 func (w *WafflerService) Score(request *message.ScoreRequest) (*message.ScoreResponse, error) {

@@ -77,7 +77,7 @@ func (w *DataSource) ParseChatTelegram(query string, limit int, recordDTOS []mod
 
 	} else {
 		var messagesTelegramRaw tg2.MessagesMessagesClass
-		messagesTelegramRaw, err = w.client.MessagesGetHistoryTime(channel, 100, int(time.Now().Unix()))
+		messagesTelegramRaw, err = w.client.MessagesGetHistoryTimeChannelMessage(channel, 100, int(time.Now().Unix()))
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +93,7 @@ func (w *DataSource) ParseChatTelegram(query string, limit int, recordDTOS []mod
 			}
 
 			for recordDTOS[0].CreatedTs.After(newRecords[len(newRecords)-1].CreatedTs) {
-				messagesTelegramRaw, err = w.client.MessagesGetHistoryTime(channel, 100, int(newRecords[len(newRecords)-1].CreatedTs.Unix()))
+				messagesTelegramRaw, err = w.client.MessagesGetHistoryTimeChannelMessage(channel, 100, int(newRecords[len(newRecords)-1].CreatedTs.Unix()))
 				if err != nil {
 					return nil, err
 				}

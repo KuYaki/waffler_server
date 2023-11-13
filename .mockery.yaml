@@ -19,3 +19,8 @@ packages:
       with-expecter: true
     interfaces:
       AiLanguageModel:
+  github.com/KuYaki/waffler_server/internal/infrastructure/service/webhook:
+    config:
+      with-expecter: true
+    interfaces:
+      SenderWebhooker:

@@ -25,7 +25,6 @@ type Waffler interface {
 	Info(w http.ResponseWriter, r *http.Request)
 	Parse(w http.ResponseWriter, r *http.Request)
 	Price(w http.ResponseWriter, r *http.Request)
-	WsTest(w http.ResponseWriter, r *http.Request)
 }
 
 type Waffl struct {
@@ -37,8 +36,8 @@ type Waffl struct {
 	godecoder.Decoder
 }
 
-func (w *Waffl) GetField() service.WafflerServicer {
-	return w.service
+func (wa *Waffl) GetField() service.WafflerServicer {
+	return wa.service
 }
 
 func NewWaffl(service service.WafflerServicer, user service2.Userer, components *component.Components) Waffler {
@@ -50,29 +49,6 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
-}
-
-func (wa *Waffl) WsTest(w http.ResponseWriter, r *http.Request) {
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		wa.Responder.ErrorInternal(w, err)
-		return
-	}
-
-	defer ws.Close()
-
-	err = ws.WriteMessage(websocket.TextMessage, []byte("hello"))
-	if err != nil {
-		wa.Responder.ErrorInternal(w, err)
-		return
-	}
-
-	err = reader(ws)
-	if err != nil {
-		wa.Responder.ErrorInternal(w, err)
-		return
-	}
-
 }
 
 func reader(conn *websocket.Conn) error {

@@ -185,8 +185,65 @@ func (_c *ClientSource_MessagesGetHistory_Call) RunAndReturn(run func(*tg.Channe
 	return _c
 }
 
-// MessagesGetHistoryTime provides a mock function with given fields: channel, limit, time
-func (_m *ClientSource) MessagesGetHistoryTime(channel *tg.Channel, limit int, time int) (tg.MessagesMessagesClass, error) {
+// MessagesGetHistoryTime provides a mock function with given fields: channel, limit, AddOffset, time
+func (_m *ClientSource) MessagesGetHistoryTime(channel *tg.Channel, limit int, AddOffset int, time int) (tg.MessagesMessagesClass, error) {
+	ret := _m.Called(channel, limit, AddOffset, time)
+
+	var r0 tg.MessagesMessagesClass
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*tg.Channel, int, int, int) (tg.MessagesMessagesClass, error)); ok {
+		return rf(channel, limit, AddOffset, time)
+	}
+	if rf, ok := ret.Get(0).(func(*tg.Channel, int, int, int) tg.MessagesMessagesClass); ok {
+		r0 = rf(channel, limit, AddOffset, time)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(tg.MessagesMessagesClass)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*tg.Channel, int, int, int) error); ok {
+		r1 = rf(channel, limit, AddOffset, time)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ClientSource_MessagesGetHistoryTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MessagesGetHistoryTime'
+type ClientSource_MessagesGetHistoryTime_Call struct {
+	*mock.Call
+}
+
+// MessagesGetHistoryTime is a helper method to define mock.On call
+//   - channel *tg.Channel
+//   - limit int
+//   - AddOffset int
+//   - time int
+func (_e *ClientSource_Expecter) MessagesGetHistoryTime(channel interface{}, limit interface{}, AddOffset interface{}, time interface{}) *ClientSource_MessagesGetHistoryTime_Call {
+	return &ClientSource_MessagesGetHistoryTime_Call{Call: _e.mock.On("MessagesGetHistoryTime", channel, limit, AddOffset, time)}
+}
+
+func (_c *ClientSource_MessagesGetHistoryTime_Call) Run(run func(channel *tg.Channel, limit int, AddOffset int, time int)) *ClientSource_MessagesGetHistoryTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*tg.Channel), args[1].(int), args[2].(int), args[3].(int))
+	})
+	return _c
+}
+
+func (_c *ClientSource_MessagesGetHistoryTime_Call) Return(_a0 tg.MessagesMessagesClass, _a1 error) *ClientSource_MessagesGetHistoryTime_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ClientSource_MessagesGetHistoryTime_Call) RunAndReturn(run func(*tg.Channel, int, int, int) (tg.MessagesMessagesClass, error)) *ClientSource_MessagesGetHistoryTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MessagesGetHistoryTimeChannelMessage provides a mock function with given fields: channel, limit, time
+func (_m *ClientSource) MessagesGetHistoryTimeChannelMessage(channel *tg.Channel, limit int, time int) (tg.MessagesMessagesClass, error) {
 	ret := _m.Called(channel, limit, time)
 
 	var r0 tg.MessagesMessagesClass
@@ -211,32 +268,32 @@ func (_m *ClientSource) MessagesGetHistoryTime(channel *tg.Channel, limit int, t
 	return r0, r1
 }
 
-// ClientSource_MessagesGetHistoryTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MessagesGetHistoryTime'
-type ClientSource_MessagesGetHistoryTime_Call struct {
+// ClientSource_MessagesGetHistoryTimeChannelMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MessagesGetHistoryTimeChannelMessage'
+type ClientSource_MessagesGetHistoryTimeChannelMessage_Call struct {
 	*mock.Call
 }
 
-// MessagesGetHistoryTime is a helper method to define mock.On call
+// MessagesGetHistoryTimeChannelMessage is a helper method to define mock.On call
 //   - channel *tg.Channel
 //   - limit int
 //   - time int
-func (_e *ClientSource_Expecter) MessagesGetHistoryTime(channel interface{}, limit interface{}, time interface{}) *ClientSource_MessagesGetHistoryTime_Call {
-	return &ClientSource_MessagesGetHistoryTime_Call{Call: _e.mock.On("MessagesGetHistoryTime", channel, limit, time)}
+func (_e *ClientSource_Expecter) MessagesGetHistoryTimeChannelMessage(channel interface{}, limit interface{}, time interface{}) *ClientSource_MessagesGetHistoryTimeChannelMessage_Call {
+	return &ClientSource_MessagesGetHistoryTimeChannelMessage_Call{Call: _e.mock.On("MessagesGetHistoryTimeChannelMessage", channel, limit, time)}
 }
 
-func (_c *ClientSource_MessagesGetHistoryTime_Call) Run(run func(channel *tg.Channel, limit int, time int)) *ClientSource_MessagesGetHistoryTime_Call {
+func (_c *ClientSource_MessagesGetHistoryTimeChannelMessage_Call) Run(run func(channel *tg.Channel, limit int, time int)) *ClientSource_MessagesGetHistoryTimeChannelMessage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(*tg.Channel), args[1].(int), args[2].(int))
 	})
 	return _c
 }
 
-func (_c *ClientSource_MessagesGetHistoryTime_Call) Return(_a0 tg.MessagesMessagesClass, _a1 error) *ClientSource_MessagesGetHistoryTime_Call {
+func (_c *ClientSource_MessagesGetHistoryTimeChannelMessage_Call) Return(_a0 tg.MessagesMessagesClass, _a1 error) *ClientSource_MessagesGetHistoryTimeChannelMessage_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *ClientSource_MessagesGetHistoryTime_Call) RunAndReturn(run func(*tg.Channel, int, int) (tg.MessagesMessagesClass, error)) *ClientSource_MessagesGetHistoryTime_Call {
+func (_c *ClientSource_MessagesGetHistoryTimeChannelMessage_Call) RunAndReturn(run func(*tg.Channel, int, int) (tg.MessagesMessagesClass, error)) *ClientSource_MessagesGetHistoryTimeChannelMessage_Call {
 	_c.Call.Return(run)
 	return _c
 }
