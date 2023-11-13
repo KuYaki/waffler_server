@@ -15,7 +15,7 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/", controllers.Waffler.Hello)
+	r.Post("/", controllers.Waffler.Hello)
 	authCheck := components.Token
 
 	r.Route("/bot_translator", func(r chi.Router) {

@@ -166,7 +166,7 @@ func (w *worker) run() {
 			if err != nil {
 				break
 			}
-			if res != nil {
+			if res != nil && len(res) > 0 {
 				w.lastIdMessage = res[len(res)-1].ID
 			}
 

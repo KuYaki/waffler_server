@@ -169,6 +169,7 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 	wa.OutputJSON(w, nil)
 }
 func (wa *Waffl) Hello(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Hello, world!")
 	wa.Responder.OutputJSON(w, "Hello, world!")
 
 }
