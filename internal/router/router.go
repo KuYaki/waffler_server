@@ -18,7 +18,7 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 	r.Post("/", controllers.Waffler.Hello)
 	authCheck := components.Token
 
-	r.Route("/bot_translator", func(r chi.Router) {
+	r.Route("/tg/api/messages", func(r chi.Router) {
 		r.Post("/set_webhook", controllers.Bot.SetWebhook)
 		r.Post("/delete_webhook", controllers.Bot.DeleteWebhook)
 	})
@@ -42,7 +42,8 @@ func NewApiRouter(controllers *modules.Controllers, components *component.Compon
 	r.Route("/source", func(r chi.Router) {
 		sourceController := controllers.Waffler
 		r.Post("/search", sourceController.Search)
-		r.HandleFunc("/parse", sourceController.Parse)
+		r.Post("/parse", sourceController.Parse)
+		//r.HandleFunc("parse/ws", sourceController.ParseWebsocket)
 		r.Post("/score", sourceController.Score)
 		r.Post("/info", sourceController.Info)
 		r.Post("/price", sourceController.Price)
