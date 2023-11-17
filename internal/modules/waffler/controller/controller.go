@@ -24,6 +24,7 @@ type Waffler interface {
 	Score(w http.ResponseWriter, r *http.Request)
 	Info(w http.ResponseWriter, r *http.Request)
 	Parse(w http.ResponseWriter, r *http.Request)
+	ParseWebsocket(w http.ResponseWriter, r *http.Request)
 	Price(w http.ResponseWriter, r *http.Request)
 }
 
@@ -63,6 +64,15 @@ func reader(conn *websocket.Conn) error {
 		}
 	}
 
+}
+func (wa *Waffl) ParseWebsocket(w http.ResponseWriter, r *http.Request) {
+	// Upgrade connection to websocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		wa.Responder.ErrorInternal(w, err)
+		return
+	}
+	defer conn.Close()
 }
 
 func (wa *Waffl) Search(w http.ResponseWriter, r *http.Request) {
@@ -115,17 +125,9 @@ func (wa *Waffl) Info(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
-	// Upgrade connection to websocket
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		wa.Responder.ErrorInternal(w, err)
-		return
-	}
-	defer conn.Close()
-
 	// Read request data from connection
 	var Parser *message.ParserRequest
-	err = wa.Decoder.Decode(r.Body, &Parser)
+	err := wa.Decoder.Decode(r.Body, &Parser)
 	if err != nil {
 		wa.ErrorBadRequest(w, err)
 		return
@@ -146,7 +148,7 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 		maxRecords = Parser.Limit * (Parser.Limit - 1) / 2
 	}
 
-	// Channel will be written to each time a record is processed
+	//// Channel will be written to each time a record is processed
 	updateChan := make(chan bool, maxRecords)
 
 	err = wa.service.ParseSource(Parser, updateChan)
@@ -159,7 +161,8 @@ func (wa *Waffl) Parse(w http.ResponseWriter, r *http.Request) {
 		<-updateChan
 		processedRecords++
 		progress := fmt.Sprintf("%.2f", processedRecords/float64(maxRecords))
-		err = conn.WriteMessage(websocket.TextMessage, []byte(progress)) // Send progress status to client
+		fmt.Println(progress)
+		//err = conn.WriteMessage(websocket.TextMessage, []byte(progress)) // Send progress status to client
 		if err != nil {
 			wa.Responder.ErrorInternal(w, err)
 			return

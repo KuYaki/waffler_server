@@ -16,7 +16,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/ptflp/godecoder v0.0.1
-	github.com/sashabaranov/go-openai v1.14.1
+	github.com/sashabaranov/go-openai v1.17.7
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.13.0
